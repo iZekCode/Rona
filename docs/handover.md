@@ -10,6 +10,7 @@ Rona is the rebuild of the PuffyPond2 prototype with a Supabase backend. Due dat
 | 0.2 Project skeleton | done (see below) |
 | 0.3 Contracts (ERD, Swift protocols) | done: `docs/supabase-erd.md` and the Swift types (see below) |
 | A1 Migrations | done: `supabase/migrations/` (see below) |
+| A2 RLS policies | done: `add_rls_policies` migration |
 | Everything else | not started |
 
 ## Chunk 0.2 result
@@ -51,9 +52,13 @@ Four migrations in `supabase/migrations/`, checked on the local stack with `supa
 
 All tables have RLS enabled and no policies yet, so the API denies everything until A2. `painting_stats` uses a composite foreign key `(painting_id, user_id)` to `paintings(id, user_id)`, which makes the database guarantee that stats belong to the same user as the painting (the ERD is updated). Tested in a rolled-back transaction: trigger bumps `updated_at`, a mismatched user is rejected, deleting an `auth.users` row removes profile, paintings and stats.
 
-## Next step: A2 and A3
+## Chunk A2 result
 
-Row level security policies (A2) and the private `paintings` bucket with its policies (A3), then the pgTAP tests (A4). See the backlog.
+`add_rls_policies` creates 11 policies for role `authenticated`: select, insert and update on `profiles` (no delete, that goes through `delete-account`), and select, insert, update and delete on `paintings` and `painting_stats`, all on the owner id with `(select auth.uid())`. Checked by hand in rolled-back transactions as two users: each sees only its own rows, cannot insert or move a row to the other user, cannot update the other's rows, cannot delete a profile, and `anon` sees nothing. The automated version is A4.
+
+## Next step: A3
+
+The private `paintings` Storage bucket and its policies on `storage.objects` (folder name equals `auth.uid()`), then the pgTAP tests (A4) and the `delete-account` function (A5). See the backlog.
 
 ## Where to port code from
 
