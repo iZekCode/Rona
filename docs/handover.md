@@ -9,6 +9,7 @@ Rona is the rebuild of the PuffyPond2 prototype with a Supabase backend. Due dat
 | 0.1 Product decisions and ADR | done: `docs/adr/0001-supabase-backend.md` |
 | 0.2 Project skeleton | done (see below) |
 | 0.3 Contracts (ERD, Swift protocols) | done: `docs/supabase-erd.md` and the Swift types (see below) |
+| A1 Migrations | done: `supabase/migrations/` (see below) |
 | Everything else | not started |
 
 ## Chunk 0.2 result
@@ -39,9 +40,20 @@ Differences from the ERD sketch and PuffyPond2:
 - `TemplateID` from the backlog is not a type: `templateID` is a `String` (a `TemplateKind` raw value or a quest id), as in the ERD.
 - Repository protocols are `Sendable`. `LocalGalleryStore` (E2) and the Supabase repositories (E3) implement them.
 
-## Next step: Wave 1
+## Chunk A1 result
 
-Wave 0 is complete. Merge it, then start the four lanes (A backend, B input, C paint engine, D independent) as separate sessions or worktrees. Critical path: A1 (migrations), then A2/A3. See the backlog.
+Four migrations in `supabase/migrations/`, checked on the local stack with `supabase db reset`:
+
+- `create_profiles`: id references `auth.users` with cascade, consent columns, timestamps.
+- `add_updated_at_trigger`: `set_updated_at()` and the trigger on `profiles`.
+- `create_paintings`: client-made uuid id, `user_id` with cascade, tombstone `deleted_at`, partial index for the gallery, trigger.
+- `create_painting_stats`: one row per painting with a jsonb document and `schema_version`.
+
+All tables have RLS enabled and no policies yet, so the API denies everything until A2. `painting_stats` uses a composite foreign key `(painting_id, user_id)` to `paintings(id, user_id)`, which makes the database guarantee that stats belong to the same user as the painting (the ERD is updated). Tested in a rolled-back transaction: trigger bumps `updated_at`, a mismatched user is rejected, deleting an `auth.users` row removes profile, paintings and stats.
+
+## Next step: A2 and A3
+
+Row level security policies (A2) and the private `paintings` bucket with its policies (A3), then the pgTAP tests (A4). See the backlog.
 
 ## Where to port code from
 
