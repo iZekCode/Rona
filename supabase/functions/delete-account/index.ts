@@ -1,9 +1,6 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "@supabase/supabase-js";
-
-const BUCKET = "paintings";
-const PAGE_SIZE = 100;
-const MAX_PAGES = 1000;
+import { removeUserFiles } from "../_shared/storage.ts";
 
 // Deletes the caller's account: first their Storage files (they do not cascade from the database),
 // then the auth user, which removes the profile, paintings and stats through the foreign keys.
@@ -27,18 +24,9 @@ Deno.serve(async (req) => {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const files = admin.storage.from(BUCKET);
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const { data: objects, error: listError } = await files.list(user.id, { limit: PAGE_SIZE });
-    if (listError) {
-      return new Response("Could not list files", { status: 500 });
-    }
-    if (!objects || objects.length === 0) break;
-
-    const { data: removed, error: removeError } = await files.remove(objects.map((o) => `${user.id}/${o.name}`));
-    if (removeError || !removed || removed.length === 0) {
-      return new Response("Could not remove files", { status: 500 });
-    }
+  const filesError = await removeUserFiles(admin, user.id);
+  if (filesError) {
+    return new Response(filesError, { status: 500 });
   }
 
   const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
