@@ -14,6 +14,7 @@ Rona is the rebuild of the PuffyPond2 prototype with a Supabase backend. Due dat
 | A3 Storage bucket | done: `create_paintings_bucket` migration |
 | A4 pgTAP tests | done: `supabase/tests/database/rls.test.sql`, run by the `database` CI job |
 | A5 delete-account function | done: `supabase/functions/delete-account` |
+| A6 Cleanup job | done: `supabase/functions/cleanup`, see `docs/supabase-cleanup.md`; not scheduled yet |
 | Everything else | not started |
 
 ## Chunk 0.2 result
@@ -71,9 +72,13 @@ All tables have RLS enabled and no policies yet, so the API denies everything un
 
 `supabase/functions/delete-account` (Deno, `supabase-js`): POST only, takes the caller from the verified bearer token (never from the body), removes all files under `paintings/{user_id}/` through the Storage API in pages of 100, then deletes the auth user, which cascades to profile, paintings and stats. `verify_jwt = false` in `config.toml` (the CLI template default, because the new API keys are not JWTs); the function verifies the token itself with `auth.getUser`. Tested locally with `supabase functions serve` and two anonymous users: GET gives 405, no or bad token gives 401 and deletes nothing, a valid call gives 204 and removes the user, profile, paintings, stats and files of that user only, and the same token gives 401 afterwards. Not tested: a user with more than 100 files (the paging loop), and a failure halfway (a retry is safe because files go first and removing nothing is fine). The client must call it only behind the parental gate (chunk E0). Not in CI yet.
 
-## Next step: Wave 1 other lanes
+## Chunk A6 result
 
-Lane A is done except the optional cleanup job (A6). Next: lanes B (input), C (paint engine) and D (independent pieces) from the backlog, and then the backend bridge (E0 consent and gate, E1 auth).
+`cleanup` edge function plus the migration `add_abandoned_users_function` and `supabase/functions/_shared/storage.ts` (the file removal that `delete-account` now shares). Rules, thresholds, caveats and the production schedule are in `docs/supabase-cleanup.md`. Tests: `supabase/tests/database/cleanup.test.sql` (7 pgTAP tests, 25 in total), and an end-to-end run on the local stack with four users: only the old abandoned user and the 100-day-old tombstone were removed (with their files), a 10-day-old tombstone and users with a live painting stayed, bad or user tokens got 401, and a second run did nothing. `delete-account` was run again after the refactor and still passes. Not done: the schedule itself (needs the hosted project), a CI job for the functions, and a user with more than 100 files.
+
+## Next step: other lanes
+
+Lane A is done. Next: lanes B (input), C (paint engine) and D (independent pieces) from the backlog, then the backend bridge (E0 consent and gate, E1 auth).
 
 ## Where to port code from
 
