@@ -11,6 +11,7 @@ Rona is the rebuild of the PuffyPond2 prototype with a Supabase backend. Due dat
 | 0.3 Contracts (ERD, Swift protocols) | done: `docs/supabase-erd.md` and the Swift types (see below) |
 | A1 Migrations | done: `supabase/migrations/` (see below) |
 | A2 RLS policies | done: `add_rls_policies` migration |
+| A3 Storage bucket | done: `create_paintings_bucket` migration |
 | Everything else | not started |
 
 ## Chunk 0.2 result
@@ -56,9 +57,13 @@ All tables have RLS enabled and no policies yet, so the API denies everything un
 
 `add_rls_policies` creates 11 policies for role `authenticated`: select, insert and update on `profiles` (no delete, that goes through `delete-account`), and select, insert, update and delete on `paintings` and `painting_stats`, all on the owner id with `(select auth.uid())`. Checked by hand in rolled-back transactions as two users: each sees only its own rows, cannot insert or move a row to the other user, cannot update the other's rows, cannot delete a profile, and `anon` sees nothing. The automated version is A4.
 
-## Next step: A3
+## Chunk A3 result
 
-The private `paintings` Storage bucket and its policies on `storage.objects` (folder name equals `auth.uid()`), then the pgTAP tests (A4) and the `delete-account` function (A5). See the backlog.
+`create_paintings_bucket` creates the private bucket `paintings` (PNG only, 10 MB limit, a guess to adjust once real painting sizes are known) and four policies on `storage.objects`: the first folder of the object path must equal `auth.uid()`. Checked through the real Storage API with two anonymous users: a user can upload, read and delete in their own folder, cannot upload into another user's folder (RLS error), cannot read or delete another user's file, a text file is rejected, and the public URL gives nothing. Automated version: A4.
+
+## Next step: A4 and A5
+
+pgTAP tests for the RLS and Storage rules (A4, run on the local stack, probably as a second CI job), and the `delete-account` edge function (A5). See the backlog.
 
 ## Where to port code from
 
