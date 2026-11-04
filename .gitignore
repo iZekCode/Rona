@@ -1,0 +1,11 @@
+.DS_Store
+xcuserdata/
+build/
+DerivedData/
+.build/
+.serena/
+.superpowers/
+supabase/.temp/
+supabase/.branches/
+.env
+.env.local
