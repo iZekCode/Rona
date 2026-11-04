@@ -15,6 +15,8 @@ Rona is the rebuild of the PuffyPond2 prototype with a Supabase backend. Due dat
 | A4 pgTAP tests | done: `supabase/tests/database/rls.test.sql`, run by the `database` CI job |
 | A5 delete-account function | done: `supabase/functions/delete-account` |
 | A6 Cleanup job | done: `supabase/functions/cleanup`, see `docs/supabase-cleanup.md`; not scheduled yet |
+| D3 Theme and visual tokens | done: `App/Views/Theme.swift` (see below) |
+| D4 AppRouter, Route, Home | done: `App/Core/Route.swift`, `App/Shell/AppRouter.swift`, `App/Views/HomeView.swift` |
 | Everything else | not started |
 
 ## Chunk 0.2 result
@@ -76,9 +78,20 @@ All tables have RLS enabled and no policies yet, so the API denies everything un
 
 `cleanup` edge function plus the migration `add_abandoned_users_function` and `supabase/functions/_shared/storage.ts` (the file removal that `delete-account` now shares). Rules, thresholds, caveats and the production schedule are in `docs/supabase-cleanup.md`. Tests: `supabase/tests/database/cleanup.test.sql` (7 pgTAP tests, 25 in total), and an end-to-end run on the local stack with four users: only the old abandoned user and the 100-day-old tombstone were removed (with their files), a 10-day-old tombstone and users with a live painting stayed, bad or user tokens got 401, and a second run did nothing. `delete-account` was run again after the refactor and still passes. Not done: the schedule itself (needs the hosted project), a CI job for the functions, and a user with more than 100 files.
 
+## Chunk D3 and D4 result
+
+- `Route` (Core, Foundation only) holds every page. Payloads are ids only (`templateID: String?`, `draftID: UUID`, painting `id`), unlike the prototype, which put `TemplateChoice`, `ReviewDraft` (with images) and `Painting` inside the route. The images and stats of a draft belong to the stage that owns it (H1). `ViewOrigin` moved to the same file.
+- `AppRouter` (Shell, `@Observable`) owns the current route; `go(_:)` animates, `home()` goes back. It does not own page state.
+- `ContentView` shows `HomeView` and a placeholder page (a button back to Home) for every other route. Each page chunk replaces its case in the `switch`.
+- Theme (D3) is the 2D look only: `Theme` (ink, leaf and sunlight backdrop, button tints, title gradient, corner radius, minimum tap 84 pt), `PageBackground`, `BigButton`, `immersive()`. The SceneKit treehouse backdrops and effects of the prototype's treehouse-garden spec belong to C3 and the 3D gallery (G3), not here.
+- `uiScale` and `Platform` from the prototype are dropped: the app is iPad only, so sizes are iPad sizes. When porting views, replace `* scale` with the plain number (already 1.2x the prototype's base).
+- Copy stays Bahasa Indonesia as in the prototype. The title is "Rona".
+- Tests: `RouteTests`, `AppRouterTests` (6 tests; 15 pass in total on the iPad mini simulator). Home checked visually on the simulator.
+- Home's buttons go to `.modePicker`, `.gallery3D` and `.report`, which are placeholders until their chunks.
+
 ## Next step: other lanes
 
-Lane A is done. Next: lanes B (input), C (paint engine) and D (independent pieces) from the backlog, then the backend bridge (E0 consent and gate, E1 auth).
+Lanes A and D3/D4 are done. Next: E0 (consent and parental gate; needs D3, D4, 0.3, all done) then E1 auth. Alongside: D1 audio and D2 templates and quest (lane D), lane B (input), lane C (paint engine), and E2 `LocalGalleryStore` (needs only 0.3). Settle the Kids Category and consent wording points below before E0.
 
 ## Where to port code from
 
