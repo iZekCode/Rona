@@ -12,6 +12,7 @@ Rona is the rebuild of the PuffyPond2 prototype with a Supabase backend. Due dat
 | A1 Migrations | done: `supabase/migrations/` (see below) |
 | A2 RLS policies | done: `add_rls_policies` migration |
 | A3 Storage bucket | done: `create_paintings_bucket` migration |
+| A4 pgTAP tests | done: `supabase/tests/database/rls.test.sql`, run by the `database` CI job |
 | Everything else | not started |
 
 ## Chunk 0.2 result
@@ -61,9 +62,13 @@ All tables have RLS enabled and no policies yet, so the API denies everything un
 
 `create_paintings_bucket` creates the private bucket `paintings` (PNG only, 10 MB limit, a guess to adjust once real painting sizes are known) and four policies on `storage.objects`: the first folder of the object path must equal `auth.uid()`. Checked through the real Storage API with two anonymous users: a user can upload, read and delete in their own folder, cannot upload into another user's folder (RLS error), cannot read or delete another user's file, a text file is rejected, and the public URL gives nothing. Automated version: A4.
 
-## Next step: A4 and A5
+## Chunk A4 result
 
-pgTAP tests for the RLS and Storage rules (A4, run on the local stack, probably as a second CI job), and the `delete-account` edge function (A5). See the backlog.
+`supabase/tests/database/rls.test.sql` has 18 pgTAP tests, run with `supabase test db` (needs the local stack). They act as user A, user B and `anon`, and cover reading, inserting, updating, handing over and deleting rows in the three tables, the composite foreign key of `painting_stats`, uploading into and reading from Storage folders, the private bucket, and the cascade when a user is deleted. The `database` job in `.github/workflows/ci.yml` starts the stack without the services the tests do not need and runs `supabase test db`. Breaking one policy on purpose made the matching tests fail. Two limits: deleting from `storage.objects` is blocked by Supabase except through the Storage API, so that case was checked by hand in A3 and is not in pgTAP; and the MIME and size limits are enforced by the Storage API, so they are not covered either.
+
+## Next step: A5
+
+The `delete-account` edge function: verify the caller, delete their Storage objects, then delete the auth user.
 
 ## Where to port code from
 
