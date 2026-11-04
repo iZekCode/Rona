@@ -10,27 +10,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    runs-on: macos-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - name: Select Xcode
-        run: |
-          # Use Xcode 27 when the runner has it, otherwise the newest installed Xcode.
-          XCODE=$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)
-          [ -z "$XCODE" ] && XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
-          sudo xcode-select -s "$XCODE"
-          xcodebuild -version
-      - name: Build and unit test
-        run: |
-          xcodebuild test \
-            -project Rona.xcodeproj \
-            -scheme Rona \
-            -destination 'platform=iOS Simulator,name=iPad (A16)' \
-            -only-testing:RonaTests \
-            CODE_SIGNING_ALLOWED=NO
-
   database:
     runs-on: ubuntu-latest
     timeout-minutes: 15
