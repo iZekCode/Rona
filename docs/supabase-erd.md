@@ -25,15 +25,15 @@ erDiagram
         uuid user_id FK "-> profiles.id, on delete cascade"
         text template_id "null for freeform; TemplateKind raw value or quest id"
         timestamptz painted_at "not null"
-        text image_path "not null; paintings/{user_id}/{id}.png"
+        text image_path "not null; object path in bucket paintings: {user_id}/{id}.png"
         text recording_path "null in v1; reserved for timelapse"
         timestamptz created_at
         timestamptz updated_at "server trigger; used for last-write-wins"
         timestamptz deleted_at "tombstone"
     }
     PAINTING_STATS {
-        uuid painting_id PK, FK "-> paintings.id, on delete cascade"
-        uuid user_id FK "denormalized for simple RLS"
+        uuid painting_id PK, FK "-> paintings(id, user_id), on delete cascade"
+        uuid user_id FK "part of the composite FK; must be the painting's owner"
         int schema_version "not null"
         jsonb stats "SessionStats document"
         timestamptz updated_at
@@ -77,7 +77,7 @@ All policies apply to role `authenticated`. Anonymous users are authenticated us
 | `painting_stats` | `user_id = auth.uid()` | `user_id = auth.uid()` | `user_id = auth.uid()` | `user_id = auth.uid()` |
 | `storage.objects` (bucket `paintings`) | `(storage.foldername(name))[1] = auth.uid()::text` | same | same | same |
 
-`painting_stats` insert and update should also check that the referenced painting belongs to the same `user_id`.
+The composite foreign key `(painting_id, user_id)` on `painting_stats` already guarantees that stats belong to a painting of the same user, so the policies do not need to check it again.
 
 ## Edge function
 
