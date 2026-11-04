@@ -13,6 +13,7 @@ Rona is the rebuild of the PuffyPond2 prototype with a Supabase backend. Due dat
 | A2 RLS policies | done: `add_rls_policies` migration |
 | A3 Storage bucket | done: `create_paintings_bucket` migration |
 | A4 pgTAP tests | done: `supabase/tests/database/rls.test.sql`, run by the `database` CI job |
+| A5 delete-account function | done: `supabase/functions/delete-account` |
 | Everything else | not started |
 
 ## Chunk 0.2 result
@@ -66,9 +67,13 @@ All tables have RLS enabled and no policies yet, so the API denies everything un
 
 `supabase/tests/database/rls.test.sql` has 18 pgTAP tests, run with `supabase test db` (needs the local stack). They act as user A, user B and `anon`, and cover reading, inserting, updating, handing over and deleting rows in the three tables, the composite foreign key of `painting_stats`, uploading into and reading from Storage folders, the private bucket, and the cascade when a user is deleted. The `database` job in `.github/workflows/ci.yml` starts the stack without the services the tests do not need and runs `supabase test db`. Breaking one policy on purpose made the matching tests fail. Two limits: deleting from `storage.objects` is blocked by Supabase except through the Storage API, so that case was checked by hand in A3 and is not in pgTAP; and the MIME and size limits are enforced by the Storage API, so they are not covered either.
 
-## Next step: A5
+## Chunk A5 result
 
-The `delete-account` edge function: verify the caller, delete their Storage objects, then delete the auth user.
+`supabase/functions/delete-account` (Deno, `supabase-js`): POST only, takes the caller from the verified bearer token (never from the body), removes all files under `paintings/{user_id}/` through the Storage API in pages of 100, then deletes the auth user, which cascades to profile, paintings and stats. `verify_jwt = false` in `config.toml` (the CLI template default, because the new API keys are not JWTs); the function verifies the token itself with `auth.getUser`. Tested locally with `supabase functions serve` and two anonymous users: GET gives 405, no or bad token gives 401 and deletes nothing, a valid call gives 204 and removes the user, profile, paintings, stats and files of that user only, and the same token gives 401 afterwards. Not tested: a user with more than 100 files (the paging loop), and a failure halfway (a retry is safe because files go first and removing nothing is fine). The client must call it only behind the parental gate (chunk E0). Not in CI yet.
+
+## Next step: Wave 1 other lanes
+
+Lane A is done except the optional cleanup job (A6). Next: lanes B (input), C (paint engine) and D (independent pieces) from the backlog, and then the backend bridge (E0 consent and gate, E1 auth).
 
 ## Where to port code from
 
