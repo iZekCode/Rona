@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Select Xcode
         run: |
-          # Project is built with Xcode 27; fall back to the newest installed Xcode.
+          # Use Xcode 27 when the runner has it, otherwise the newest installed Xcode.
           XCODE=$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)
           [ -z "$XCODE" ] && XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
           sudo xcode-select -s "$XCODE"
