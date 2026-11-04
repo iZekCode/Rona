@@ -1,40 +1,29 @@
 import Foundation
 
-/// A person's left or right hand/arm, not a screen side (the front camera is mirrored).
+// A person's left or right hand or arm, not a side of the screen (the front camera is mirrored).
 nonisolated enum Side: String, Codable, CaseIterable, CodingKeyRepresentable, Sendable {
     case left, right
 }
 
-/// Movement stats of one drawing session. Stored as one JSON document per painting (`painting_stats.stats`).
+// Movement stats of one drawing session, saved as one JSON document per painting.
 nonisolated struct SessionStats: Codable, Equatable, Sendable {
-    /// Format version of the JSON document, stored in `painting_stats.schema_version`.
     static let schemaVersion = 1
     static let heatmapColumns = 32
     static let heatmapRows = 20
 
-    /// Seconds spent on the canvas page.
     var duration: TimeInterval = 0
-    /// Highest shoulder abduction reached per arm, in degrees.
     var romDegrees: [Side: Double] = [:]
-    /// Time the drawing hands spent painting, per canvas cell (`heatmapColumns` × `heatmapRows`, row-major,
-    /// top-left first), in hundredths of a second.
     var heatmap: [UInt16] = Array(repeating: 0, count: heatmapColumns * heatmapRows)
-    /// Seconds each hand spent painting (fist time).
     var pinchSeconds: [Side: Double] = [:]
-    /// Straightest elbow per arm, in degrees (180 = fully straight).
     var elbowExtension: [Side: Double] = [:]
-    /// Highest wrist above its shoulder per arm, in shoulder widths (negative = never got above it).
     var reachHeight: [Side: Double] = [:]
-    /// Area the wrist covered per arm (convex hull), in shoulder widths squared.
     var reachArea: [Side: Double] = [:]
-    /// Fist → open cycles per hand.
     var gripCycles: [Side: Int] = [:]
-    /// Biggest tilt of the shoulder line, in degrees (over 15 means leaning over to reach).
     var maxTrunkLean: Double = 0
 
     init() {}
 
-    /// Stats saved before a metric existed decode with that metric empty.
+    // Stats saved before a metric existed decode with that metric empty.
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         duration = try c.decodeIfPresent(TimeInterval.self, forKey: .duration) ?? 0
