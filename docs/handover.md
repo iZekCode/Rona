@@ -42,7 +42,7 @@ Differences from the ERD sketch and PuffyPond2:
 
 ## Chunk A1 result
 
-Three tables in `supabase/migrations/`, checked on the local stack with `supabase db reset`:
+Four migrations in `supabase/migrations/`, checked on the local stack with `supabase db reset`:
 
 - `create_profiles`: id references `auth.users` with cascade, consent columns, timestamps.
 - `add_updated_at_trigger`: `set_updated_at()` and the trigger on `profiles`.
