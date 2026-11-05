@@ -17,6 +17,8 @@ Rona is the rebuild of the PuffyPond2 prototype with a Supabase backend. Due dat
 | A6 Cleanup job | done: `supabase/functions/cleanup`, see `docs/supabase-cleanup.md`; not scheduled yet |
 | D3 Theme and visual tokens | done: `App/Views/Theme.swift` (see below) |
 | D4 AppRouter, Route, Home | done: `App/Core/Route.swift`, `App/Shell/AppRouter.swift`, `App/Views/HomeView.swift` |
+| E0 Consent | done: `Consent/` (see below); text and policy URL are placeholders; parental gate dropped for now |
+| E2 LocalGalleryStore | done: `Gallery/Shell/LocalGalleryStore.swift` (see below) |
 | Everything else | not started |
 
 ## Chunk 0.2 result
@@ -72,7 +74,7 @@ All tables have RLS enabled and no policies yet, so the API denies everything un
 
 ## Chunk A5 result
 
-`supabase/functions/delete-account` (Deno, `supabase-js`): POST only, takes the caller from the verified bearer token (never from the body), removes all files under `paintings/{user_id}/` through the Storage API in pages of 100, then deletes the auth user, which cascades to profile, paintings and stats. `verify_jwt = false` in `config.toml` (the CLI template default, because the new API keys are not JWTs); the function verifies the token itself with `auth.getUser`. Tested locally with `supabase functions serve` and two anonymous users: GET gives 405, no or bad token gives 401 and deletes nothing, a valid call gives 204 and removes the user, profile, paintings, stats and files of that user only, and the same token gives 401 afterwards. Not tested: a user with more than 100 files (the paging loop), and a failure halfway (a retry is safe because files go first and removing nothing is fine). The client must call it only behind the parental gate (chunk E0). Not in CI yet.
+`supabase/functions/delete-account` (Deno, `supabase-js`): POST only, takes the caller from the verified bearer token (never from the body), removes all files under `paintings/{user_id}/` through the Storage API in pages of 100, then deletes the auth user, which cascades to profile, paintings and stats. `verify_jwt = false` in `config.toml` (the CLI template default, because the new API keys are not JWTs); the function verifies the token itself with `auth.getUser`. Tested locally with `supabase functions serve` and two anonymous users: GET gives 405, no or bad token gives 401 and deletes nothing, a valid call gives 204 and removes the user, profile, paintings, stats and files of that user only, and the same token gives 401 afterwards. Not tested: a user with more than 100 files (the paging loop), and a failure halfway (a retry is safe because files go first and removing nothing is fine). Not in CI yet.
 
 ## Chunk A6 result
 
@@ -89,9 +91,28 @@ All tables have RLS enabled and no policies yet, so the API denies everything un
 - Tests: `RouteTests`, `AppRouterTests` (6 tests; 15 pass in total on the iPad mini simulator). Home checked visually on the simulator.
 - Home's buttons go to `.modePicker`, `.gallery3D` and `.report`, which are placeholders until their chunks.
 
+## Chunk E2 result
+
+`LocalGalleryStore` is an actor that implements both `GalleryRepository` and `StatsRepository`. Layout: `Application Support/Gallery/{painting id}/painting.json` (the `Painting` record), `image.png`, `stats.json`. The record is written last, so a folder without one (an interrupted save) is ignored, and a record that does not decode is skipped instead of hiding the whole gallery.
+
+- `delete` is a tombstone: it removes `image.png` and `stats.json` and keeps the record with `deletedAt`. A second delete keeps the first date. `paintings()` hides tombstones; `allPaintings()` (extra, not in the protocol) returns them for the sync engine (E4). E4 decides when a synced tombstone is purged.
+- `imageData` and `save(stats)` throw `GalleryStoreError.notFound` for an unknown or deleted painting; `stats(for:)` returns nil for those.
+- Saving the same id twice replaces the painting (a retried save is safe).
+- Not done: calendar queries (`paintings(on:)`, days with paintings, saved template ids) and the review page's paint-only and bare-canvas photos. They belong to G2 to G4, as pure queries over `[Painting]` and extra files in the painting folder.
+- Tests: `LocalGalleryStoreTests` (14).
+
+## Chunk E0 result
+
+- `Consent/Core/ConsentPolicy`: `currentVersion = 1`; `needsConsent(acceptedVersion:)` is true when nothing was accepted or the accepted version is older. Raise the version when the text or what is uploaded changes.
+- `Consent/Shell/ConsentStore` (`@Observable`, `UserDefaults`): `acceptedVersion`, `acceptedAt`, `needsConsent`, `accept(at:)`. E1 copies `acceptedAt` and `acceptedVersion` into `profiles` after the first anonymous sign-in.
+- `Consent/Views/ConsentView`: four short points (camera stays on the device, what is uploaded, 2D estimates not medical, deletion), a privacy policy link and the agree button. `ContentView` shows it before anything else while `needsConsent` is true; no sign-in or upload exists yet, so nothing runs before consent.
+- No parental gate. E0 first had one (a keypad asking three digits written as words, in front of agree, the policy link, link-account and delete-account). It was removed on 5 Nov 2026 before any commit; ADR decision 4 is amended. Link-account, delete-account and the policy link are plain buttons until the Kids Category decision, which is due before the App Store submission (I3).
+- Placeholders to replace before the TestFlight build (I3): `ConsentView.privacyPolicyURL` (`https://rona.example/privacy`) and the consent wording, which still needs the Kids Category and Apple child-account decisions below.
+- Tests: `ConsentTests` (7). The consent screen was checked on the iPad mini simulator.
+
 ## Next step: other lanes
 
-Lanes A and D3/D4 are done. Next: E0 (consent and parental gate; needs D3, D4, 0.3, all done) then E1 auth. Alongside: D1 audio and D2 templates and quest (lane D), lane B (input), lane C (paint engine), and E2 `LocalGalleryStore` (needs only 0.3). Settle the Kids Category and consent wording points below before E0.
+Done: lane A, D3, D4, E0, E2. Next: E1 auth (needs A1, E0), then E3 (needs E1) and E4 (needs E2, E3). Alongside: D1 audio and D2 templates and quest (lane D), lane B (input) and lane C (paint engine; C4 is the frame-budget gate). Settle the Kids Category and consent wording points below before the TestFlight build.
 
 ## Where to port code from
 
@@ -119,7 +140,7 @@ Port with the matching tests from `PuffyPondTests/`. The prototype's own `Galler
 
 ## Open points to confirm early
 
-- Whether the app is registered in the App Store Kids Category (affects analytics rules and the parental gate; guideline 1.3).
+- Whether the app is registered in the App Store Kids Category (affects analytics rules and whether a parental gate is needed again; guideline 1.3). Decide before the App Store submission (I3).
 - Apple's requirements for accounts used by children, and the exact privacy policy and consent wording that names the uploaded movement stats.
 - Final minimum iPadOS version.
 - The Metal frame budget on a non-Pro iPad (chunk C4 is a gate before pages are built on the engine).

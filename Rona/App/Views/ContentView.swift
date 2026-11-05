@@ -2,10 +2,17 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var router = AppRouter()
+    @State private var consent = ConsentStore()
 
     var body: some View {
-        page
-            .immersive()
+        Group {
+            if consent.needsConsent {
+                ConsentView(consent: consent)
+            } else {
+                page
+            }
+        }
+        .immersive()
     }
 
     @ViewBuilder private var page: some View {

@@ -14,7 +14,7 @@ Rona is the rebuild of the earlier prototype in `../PuffyPond2` (read-only refer
 ## Locked decisions (details in the ADR)
 
 - iPad only, landscape, full screen (`UIRequiresFullScreen`). No iPhone, no Mac.
-- Consent and parental gate first; anonymous sign-in after consent; upgrade with `linkIdentity` (Sign in with Apple). One account is one child.
+- Consent first (no parental gate for now; decided before the App Store submission); anonymous sign-in after consent; upgrade with `linkIdentity` (Sign in with Apple). One account is one child.
 - Upload painting PNG and session stats. Timelapse stays local in v1. Camera frames never leave the device.
 - Local-first: the UI reads only the local store; a sync engine (outbox, client UUIDs, tombstones, last-write-wins) talks to Supabase.
 - Daily quest is computed on the client from a stable hash of the local date, same for every child. No `daily_quest` table.

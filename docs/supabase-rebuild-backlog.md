@@ -76,8 +76,8 @@ Until Lane B lands, C1 to C3 use a fake point-stream input.
 
 | ID | Chunk | Mode | Needs |
 |---|---|---|---|
-| E0 | Consent onboarding and parental gate: consent screen before the first sign-in, `ConsentStore` (local flag with version), reusable gate for link-account, delete-account and external links | SEQ | D3, D4, 0.3 |
-| E1 | Auth: anonymous sign-in after consent, session in Keychain and restore on launch, upgrade through `linkIdentity` with Sign in with Apple behind the gate, create `profiles` row | SEQ | A1, E0 |
+| E0 | Consent onboarding: consent screen before the first sign-in, `ConsentStore` (local flag with version). The parental gate was dropped for now (ADR 0001, decision 4) | SEQ | D3, D4, 0.3 |
+| E1 | Auth: anonymous sign-in after consent, session in Keychain and restore on launch, upgrade through `linkIdentity` with Sign in with Apple, create `profiles` row | SEQ | A1, E0 |
 | E2 | `LocalGalleryStore`: file-based implementation of `GalleryRepository` and `StatsRepository` | PAR with E1, E3 | 0.3 |
 | E3 | `SupabaseGalleryRepository` and `SupabaseStatsRepository`: Storage upload plus row insert | PAR with E2 | A2, A3, E1 |
 | E4 | Sync engine: offline queue, retry, last-write-wins, deletion propagation (deleting a painting relocks its template), uploads through a background `URLSession` | SEQ | E2, E3 |

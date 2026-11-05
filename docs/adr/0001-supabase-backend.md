@@ -17,7 +17,7 @@ Rona is a children's rehabilitation-style painting app, rebuilt from the earlier
 
 ### 2. Auth: anonymous first, upgrade to Sign in with Apple
 
-After consent (decision 4) the app signs in anonymously, so a child can paint without any account screen. The anonymous user is later upgraded with `linkIdentity` (Sign in with Apple), which keeps the same `user_id`, so no data migration is needed. The upgrade button sits behind the parental gate. Sign in with Apple needs no separate review, only the paid Apple Developer account that TestFlight needs anyway. Google sign-in is not offered, so guideline 4.8 is satisfied by Sign in with Apple alone.
+After consent (decision 4) the app signs in anonymously, so a child can paint without any account screen. The anonymous user is later upgraded with `linkIdentity` (Sign in with Apple), which keeps the same `user_id`, so no data migration is needed. Sign in with Apple needs no separate review, only the paid Apple Developer account that TestFlight needs anyway. Google sign-in is not offered, so guideline 4.8 is satisfied by Sign in with Apple alone.
 
 Consequence: if the app is deleted or the iPad is replaced before the account is linked, the anonymous user and its data are orphaned. The upgrade prompt must be visible enough to prevent this.
 
@@ -25,9 +25,11 @@ Consequence: if the app is deleted or the iPad is replaced before the account is
 
 `profiles` is 1:1 with `auth.users`. Row level security is `user_id = auth.uid()` everywhere. No child-profile switching and no parent-with-many-children model in v1.
 
-### 4. Consent and parental gate: consent first, plus a gate for sensitive actions
+### 4. Consent first, no parental gate for now
 
-A consent screen (privacy policy link, parent confirmation) is shown before the first launch flow. No anonymous user is created before consent. The app stores the consent locally and in `profiles` (`consented_at`, `consent_version`); a new `consent_version` asks again. A separate parental gate protects: linking Sign in with Apple, deleting the account, and any link out of the app.
+A consent screen (privacy policy link, parent confirmation) is shown before the first launch flow. No anonymous user is created before consent. The app stores the consent locally and in `profiles` (`consented_at`, `consent_version`); a new `consent_version` asks again.
+
+Amended 2026-11-05: this decision first also had a separate parental gate (linking Sign in with Apple, deleting the account, any link out of the app). It was built in chunk E0 and then removed on the owner's call: whether the app goes in the Kids Category, and so whether a gate is needed, is decided later, before the App Store submission (chunk I3). Until then the upgrade button, account deletion and the privacy policy link are plain buttons, so a child can reach them. The gate was a keypad that asks for three digits written as words; it was never committed.
 
 ### 5. What is uploaded
 
@@ -60,8 +62,8 @@ The nine abstract templates and the ten-quest pool already exist in `Templates/C
 - Backend scope is small: `profiles`, `paintings`, `painting_stats`, one private Storage bucket, and a `delete-account` edge function.
 - Account deletion must also remove Storage objects, which do not cascade from the database. This is required by App Store guideline 5.1.1(v) and applies to anonymous accounts too.
 - Privacy policy and consent text must name the uploaded movement stats.
-- Onboarding gains one screen (consent) and the app gains one reusable parental gate, about half a day of work.
-- If the app is later placed in the Kids Category, guideline 1.3 limits third-party analytics and ads and expects a parental gate for outbound links.
+- Onboarding gains one screen (consent).
+- If the app is later placed in the Kids Category, guideline 1.3 limits third-party analytics and ads and expects a parental gate for outbound links. That decision, and with it the gate, is open until I3.
 
 ## Rejected alternatives
 
