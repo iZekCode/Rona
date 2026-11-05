@@ -125,6 +125,16 @@ All tables have RLS enabled and no policies yet, so the API denies everything un
 - Known gap: an Apple account already linked to another user (an earlier iPad) gives `alreadyUsed` and a message. Signing in to that existing account on a new device (restore after reinstall, ADR decision 6) is not built; it needs `signInWithIdToken` and belongs with the pull side of E4.
 - Tests that call Supabase through the app are not in CI: Xcode Cloud has no Docker.
 
+## Hosted Supabase project
+
+- Project `Rona`, ref `smbsoovlrylahmrqsryw`, region ap-southeast-1 (Singapore), free plan (a free project is paused after 7 days without activity; think about a paid plan before release). Created 4 Nov 2026 with Data API on, "automatically expose new tables" on (the migrations have no table `grant`s and rely on it) and automatic RLS on.
+- Pushed with `supabase db push --remote`: all 7 migrations. Checked there: 3 tables with RLS, 11 table policies and 4 Storage policies, private PNG bucket (10 MB), and `authenticated` can select, insert, update and delete on the three tables. `anon` has the same default table grants, but no policy, so RLS refuses it.
+- Supabase CLI 3.0 targets the local stack by default: use `--remote` for `db push` and `db query` against the linked project (`--read-only` for a query that only reads). A deploy job must pass it too.
+- Auth settings set by hand in the dashboard (not from `config.toml`: `supabase config push` would overwrite them with the local values, including `site_url`): anonymous sign-ins on, manual linking on, Apple provider on with client id `LittleCrew.Rona`, no secret, "Allow users without an email" on.
+- Which server the app uses (`SupabaseConfig`): the simulator uses the local stack, a device and release builds use the hosted project, and the environment variables `SUPABASE_URL` and `SUPABASE_KEY` (Edit Scheme, Run, Arguments) override both. Do not commit the scheme with such a variable in it.
+- Checked on an iPad against the hosted project: anonymous sign-in, the `profiles` row (consent version 1) and the Sign in with Apple link (the user is no longer anonymous, provider `apple`).
+- Not done: deploying the `delete-account` and `cleanup` functions, the daily schedule of `cleanup` (see `docs/supabase-cleanup.md`), and CD (GitHub Actions for `db push` and `functions deploy`, Xcode Cloud archive and TestFlight).
+
 ## Next step: other lanes
 
 Done: lane A, D3, D4, E0, E1 (code), E2. Next: E3 (needs E1) and E4 (needs E2, E3). Alongside: D1 audio and D2 templates and quest (lane D), lane B (input) and lane C (paint engine; C4 is the frame-budget gate). Settle the Kids Category and consent wording points below before the TestFlight build.
