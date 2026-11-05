@@ -4,9 +4,12 @@ import SwiftUI
 // hands aren't in the camera yet.
 struct HomeView: View {
     let router: AppRouter
+    let auth: AuthStage
+
+    @State private var showAccount = false
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottomTrailing) {
             PageBackground()
             VStack(spacing: 40) {
                 VStack(spacing: 8) {
@@ -32,10 +35,21 @@ struct HomeView: View {
                 }
             }
             .padding(28)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Button { showAccount = true } label: {
+                Image(systemName: "person.crop.circle")
+                    .font(.system(size: 40, weight: .semibold))
+                    .foregroundStyle(Theme.ink.opacity(0.55))
+                    .frame(width: Theme.minTap, height: Theme.minTap)
+            }
+            .accessibilityLabel("Akun")
+            .padding(20)
         }
+        .sheet(isPresented: $showAccount) { LinkAccountView(auth: auth) }
     }
 }
 
 #Preview(traits: .landscapeLeft) {
-    HomeView(router: AppRouter())
+    HomeView(router: AppRouter(), auth: .preview)
 }

@@ -20,6 +20,12 @@ final class ConsentStore {
 
     var needsConsent: Bool { ConsentPolicy.needsConsent(acceptedVersion: acceptedVersion) }
 
+    // The consent in force, or nil while the parent still has to agree.
+    var agreement: ConsentRecord? {
+        guard !needsConsent, let acceptedVersion, let acceptedAt else { return nil }
+        return ConsentRecord(acceptedAt: acceptedAt, version: acceptedVersion)
+    }
+
     func accept(at date: Date = Date()) {
         acceptedVersion = ConsentPolicy.currentVersion
         acceptedAt = date
