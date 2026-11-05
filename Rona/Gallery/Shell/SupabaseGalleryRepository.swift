@@ -32,13 +32,31 @@ nonisolated struct SupabaseGalleryRepository: GalleryRepository {
             .download(path: StoragePath.image(userID: userID, paintingID: id))
     }
 
+    // Every painting of the account including tombstones, newest first: what the sync engine compares with
+    // the device.
+    func allPaintings() async throws -> [Painting] {
+        let rows: [PaintingRow] = try await client.from("paintings")
+            .select()
+            .order("painted_at", ascending: false)
+            .execute()
+            .value
+        return rows.map(\.painting)
+    }
+
     // The PNG goes first and the row second, so no row ever points at a file that is not there. Both steps
     // are idempotent (upload with upsert, row upsert on the client-made id), so a retry after a failure
     // halfway is safe.
     func save(_ painting: Painting, png: Data) async throws {
-        let row = PaintingRow(painting, userID: try await currentUserID())
+        let userID = try await currentUserID()
+        let path = StoragePath.image(userID: userID, paintingID: painting.id)
         try await client.storage.from(Self.bucket)
-            .upload(row.imagePath, data: png, options: FileOptions(contentType: "image/png", upsert: true))
+            .upload(path, data: png, options: FileOptions(contentType: "image/png", upsert: true))
+        try await pushRow(painting)
+    }
+
+    // The row alone, for when the PNG went up by itself (the sync engine uploads it in the background).
+    func pushRow(_ painting: Painting) async throws {
+        let row = PaintingRow(painting, userID: try await currentUserID())
         try await client.from("paintings")
             .upsert(row, onConflict: "id", returning: .minimal)
             .execute()

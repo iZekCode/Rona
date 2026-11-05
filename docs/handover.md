@@ -19,6 +19,7 @@ Rona is the rebuild of the PuffyPond2 prototype with a Supabase backend. Due dat
 | D4 AppRouter, Route, Home | done: `App/Core/Route.swift`, `App/Shell/AppRouter.swift`, `App/Views/HomeView.swift` |
 | E0 Consent | done: `Consent/` (see below); text and policy URL are placeholders; parental gate dropped for now |
 | E1 Auth | done in code: `Sync/` (see below); the Apple link is not tried against a real Apple ID yet |
+| E4 Sync engine | done: `SyncEngine`, `SyncPlan`, `BackgroundImageUploader` (see below); nothing calls it after a save yet (H1) |
 | E3 Supabase repositories | done: `SupabaseGalleryRepository`, `SupabaseStatsRepository` (see below) |
 | E2 LocalGalleryStore | done: `Gallery/Shell/LocalGalleryStore.swift` (see below) |
 | Everything else | not started |
@@ -134,6 +135,23 @@ All tables have RLS enabled and no policies yet, so the API denies everything un
 - Tests: `StoragePathTests`, `PaintingRowTests`, `StatsRowTests` (66 tests in all), plus `SupabaseRepositoriesIntegrationTests`, skipped unless `TEST_RUNNER_SUPABASE_INTEGRATION=1` (Xcode Cloud has no Docker): it signs in anonymously on the local stack and round-trips a painting and its stats, retries a save, reads the image back, deletes (tombstone) and checks `notFound`. It passes. Each run leaves one anonymous user and a tombstoned painting with its file on the local stack. Not run against the hosted project.
 - Not done: `imageData` returns the library's storage error for a missing object instead of `GalleryStoreError.notFound`; the pull side of E4 will need to tell the two apart. There is no paging in `paintings()` (fine at tens of paintings).
 
+## Chunk E4 result
+
+The sync is push and pull, with real background uploads (ADR decision 6 stands: "uploads use a background URLSession").
+
+- **No separate outbox.** `LocalGalleryStore` keeps `sync.json` next to each painting (`SyncState`: image uploaded, image in flight, stats pushed). The server's list (tombstones included) is the truth about what exists there; the flags only avoid sending the same bytes twice, so a restart or a relaunch by the system picks up where it was. Saving a painting again resets its flags; saving new stats clears `statsPushed`.
+- **Core:** `SyncPlan.actions(local:remote:)` turns the two lists into actions: `uploadImage`, `pushRow`, `pushStats`, `pushTombstone`, `applyRemoteTombstone`, `download`. For a painting the server lacks: the image first, then the row, then the stats (the row is pushed only once the image is up, so no row points at a missing file). A delete always wins over pending work; a delete the server never saw needs nothing. `Backoff` doubles from 2 s to 300 s. Ports: `LocalSyncStore`, `RemoteGallery`, `ImageUploader`.
+- **Shell:** `SyncEngine` (actor, one run at a time; a call during a run asks for another round). A failed run repeats after the backoff up to 6 times, then waits for the next trigger. A failed image upload retries after the backoff. An image still marked "in flight" that the system no longer knows (the app was force-quit, which cancels background tasks) is cleared and sent again. `BackgroundImageUploader` hands the PNG to a background `URLSession` (session `LittleCrew.Rona.image-upload`, `sessionSendsLaunchEvents`) as a plain Storage upload (raw POST, user token, `x-upsert`); results go to the engine through `onFinish`, buffered until it is set (after a relaunch). `AppDelegate` passes the system's background-events completion handler to the uploader. `SupabaseRemoteGallery` adapts the two Supabase repositories (`SupabaseGalleryRepository` gained `allPaintings()` and `pushRow`).
+- **Wiring:** `AppServices.shared` builds the client, sign-in, local store, uploader and engine once, and `bootstrap()` signs in from the saved session and starts the sync, so a background relaunch works with no page on screen. `AuthStage.isReady` (signed in and consent on the profile) enables the engine; triggers are the app becoming active, the network coming back (`NWPathMonitor`), `isReady`, and a finished upload.
+- **Tests:** `SyncPlanTests`, `BackoffTests`, `SyncEngineTests` (fakes for the three ports), new `LocalGalleryStoreTests` for the sync state, `AuthStageTests` for `isReady` (106 in all). `SyncIntegrationTests`, skipped unless `TEST_RUNNER_SUPABASE_INTEGRATION=1`, runs two devices of one account on the local stack: A saves a painting and stats and they go up through the real background session, B (empty) pulls image and stats, a delete on A reaches B. It passes, and the local database shows the row, the stats row, the file under the lowercase path, and the tombstone. Not run against the hosted project.
+- **Open:**
+  - The save flow (H1) must call `AppServices.shared.sync.run()` after a local save; nothing does yet, so only the triggers above start a sync.
+  - Not tried by hand: the system relaunching the app in the background to report a finished upload (`handleEventsForBackgroundURLSession`), and an upload that outlives the app on a real iPad.
+  - The upload request carries the token taken when it starts. If the system delays it past the token's life (1 hour), it fails and is retried with a fresh one.
+  - A tombstoned painting stays on the device as a record (no purge after it is synced), and the pull reads the whole list each run (no paging, no incremental pull); fine at tens of paintings.
+  - Pull only matters across devices once "sign in to an existing account on a new device" exists (`signInWithIdToken`, not built).
+  - `imageData` still returns the library's storage error for a missing object instead of `GalleryStoreError.notFound`; a failed download is just retried.
+
 ## Hosted Supabase project
 
 - Project `Rona`, ref `smbsoovlrylahmrqsryw`, region ap-southeast-1 (Singapore), free plan (a free project is paused after 7 days without activity; think about a paid plan before release). Created 4 Nov 2026 with Data API on, "automatically expose new tables" on (the migrations have no table `grant`s and rely on it) and automatic RLS on.
@@ -147,7 +165,7 @@ All tables have RLS enabled and no policies yet, so the API denies everything un
 
 ## Next step: other lanes
 
-Done: lane A, D3, D4, E0, E1, E2, E3. Next: E4, the sync engine (needs E2 and E3: outbox, retry, last-write-wins, tombstones, background uploads). Alongside: D1 audio and D2 templates and quest (lane D), lane B (input) and lane C (paint engine; C4 is the frame-budget gate). Settle the Kids Category and consent wording points below before the TestFlight build.
+Done: lane A, D3, D4, E0, E1, E2, E3, E4 (the whole backend bridge). Next: the engine lanes B (input), C (paint engine; C4 is the frame-budget gate) and the rest of D (D1 audio, D2 templates and quest), then the pages (Wave 3) on top of `LocalGalleryStore`. Alongside: D1 audio and D2 templates and quest (lane D), lane B (input) and lane C (paint engine; C4 is the frame-budget gate). Settle the Kids Category and consent wording points below before the TestFlight build.
 
 ## Where to port code from
 
