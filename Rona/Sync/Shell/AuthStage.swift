@@ -7,6 +7,8 @@ import Observation
 final class AuthStage {
     private(set) var state: AuthState = .signedOut
     private(set) var failed = false
+    // Signed in and the consent is on the profile row: from here the sync can run.
+    private(set) var isReady = false
 
     @ObservationIgnored private let service: any AuthService
     @ObservationIgnored private let profiles: any ProfileRepository
@@ -50,6 +52,7 @@ final class AuthStage {
                 try await profiles.record(agreement, for: userID)
                 recordedVersion = agreement.version
             }
+            isReady = state != .signedOut
             failed = false
         } catch {
             // A failed restore (offline, expired token) must not fall through to a new anonymous user:

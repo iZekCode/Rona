@@ -104,6 +104,26 @@ struct AuthStageTests {
         #expect(await profiles.recorded.count == 1)
     }
 
+    @Test func theStageIsReadyOnlyOnceSignedInAndTheProfileIsRecorded() async {
+        let (stage, _, profiles) = makeStage(profileFails: true)
+        #expect(!stage.isReady)
+
+        await stage.start(agreement: agreement)
+        #expect(!stage.isReady)               // signed in, but the consent is not on the profile yet
+
+        await profiles.setFails(false)
+        await stage.start(agreement: agreement)
+        #expect(stage.isReady)
+    }
+
+    @Test func theStageIsNotReadyWithoutASession() async {
+        let (stage, _, _) = makeStage(restored: .failure(Offline()))
+
+        await stage.start(agreement: agreement)
+
+        #expect(!stage.isReady)
+    }
+
     @Test func linkingAppleKeepsTheSameUserAndMarksItNotAnonymous() async throws {
         let (stage, service, _) = makeStage()
         await stage.start(agreement: agreement)

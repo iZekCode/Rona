@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ContentView: View {
     let auth: AuthStage
+    // nil in previews, which never sync.
+    var sync: SyncEngine?
 
     @State private var router = AppRouter()
     @State private var consent = ConsentStore()
@@ -18,8 +20,18 @@ struct ContentView: View {
         .immersive()
         // Signs in once consent exists, and again when the app comes back if an earlier try failed.
         .task(id: consent.agreement) { await auth.start(agreement: consent.agreement) }
+        // The sync starts once sign-in and the consent on the profile are done, and again when the app comes back.
+        .task(id: auth.isReady) {
+            guard auth.isReady, let sync else { return }
+            await sync.enable()
+            await sync.run()
+        }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await auth.start(agreement: consent.agreement) } }
+            guard phase == .active else { return }
+            Task {
+                await auth.start(agreement: consent.agreement)
+                await sync?.run()
+            }
         }
     }
 

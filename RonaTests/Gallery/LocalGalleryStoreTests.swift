@@ -93,7 +93,7 @@ struct LocalGalleryStoreTests {
         try await store.delete(id: p.id)
 
         let files = try FileManager.default.contentsOfDirectory(atPath: folder.appending(path: p.id.uuidString).path)
-        #expect(files == ["painting.json"])
+        #expect(files.sorted() == ["painting.json", "sync.json"])
     }
 
     @Test func deletingTwiceKeepsTheFirstTombstoneDate() async throws {
@@ -163,6 +163,104 @@ struct LocalGalleryStoreTests {
         try Data("not json".utf8).write(to: folder.appending(path: broken.id.uuidString).appending(path: "painting.json"))
 
         #expect(try await store.paintings() == [good])
+    }
+
+    // MARK: sync state
+
+    @Test func aNewPaintingHasNothingSyncedYet() async throws {
+        let folder = makeFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = LocalGalleryStore(folder: folder)
+        let p = painting(at: 100)
+        try await store.save(p, png: Data([1]))
+
+        let snapshot = try await store.syncSnapshot()
+
+        #expect(snapshot == [LocalPaintingState(painting: p, hasStats: false, sync: SyncState())])
+    }
+
+    @Test func markersAreRememberedAcrossStores() async throws {
+        let folder = makeFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = LocalGalleryStore(folder: folder)
+        let p = painting(at: 100)
+        try await store.save(p, png: Data([1]))
+        try await store.save(SessionStats(), for: p.id)
+        try await store.setImageInFlight(true, for: p.id)
+
+        let state = try await LocalGalleryStore(folder: folder).syncSnapshot().first
+        #expect(state?.hasStats == true)
+        #expect(state?.sync == SyncState(imageUploaded: false, imageInFlight: true, statsPushed: false))
+
+        try await store.markImageUploaded(for: p.id)
+        try await store.markStatsPushed(for: p.id)
+        let done = try await store.syncSnapshot().first
+        #expect(done?.sync == SyncState(imageUploaded: true, imageInFlight: false, statsPushed: true))
+    }
+
+    @Test func newStatsMakeThePaintingDirtyAgain() async throws {
+        let folder = makeFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = LocalGalleryStore(folder: folder)
+        let p = painting(at: 100)
+        try await store.save(p, png: Data([1]))
+        try await store.save(SessionStats(), for: p.id)
+        try await store.markStatsPushed(for: p.id)
+
+        var changed = SessionStats()
+        changed.duration = 9
+        try await store.save(changed, for: p.id)
+
+        #expect(try await store.syncSnapshot().first?.sync.statsPushed == false)
+    }
+
+    @Test func savingAPaintingAgainForgetsThatItsImageWasSent() async throws {
+        let folder = makeFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = LocalGalleryStore(folder: folder)
+        let p = painting(at: 100)
+        try await store.save(p, png: Data([1]))
+        try await store.markImageUploaded(for: p.id)
+
+        try await store.save(p, png: Data([2]))
+
+        #expect(try await store.syncSnapshot().first?.sync.imageUploaded == false)
+    }
+
+    @Test func aPaintingFromTheServerIsStoredAsSynced() async throws {
+        let folder = makeFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = LocalGalleryStore(folder: folder)
+        let p = painting(at: 100, templateID: "fish")
+        var stats = SessionStats()
+        stats.duration = 5
+
+        try await store.saveFromRemote(p, png: Data([7]), stats: stats)
+
+        #expect(try await store.paintings() == [p])
+        #expect(try await store.imageData(for: p.id) == Data([7]))
+        #expect(try await store.stats(for: p.id) == stats)
+        #expect(try await store.syncSnapshot().first?.sync == SyncState(imageUploaded: true, imageInFlight: false, statsPushed: true))
+    }
+
+    @Test func aRemoteTombstoneDeletesLocally() async throws {
+        let folder = makeFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = LocalGalleryStore(folder: folder)
+        let p = painting(at: 100)
+        try await store.save(p, png: Data([1]))
+
+        try await store.applyRemoteTombstone(for: p.id)
+
+        #expect(try await store.paintings().isEmpty)
+        #expect(try await store.allPaintings().first?.isDeleted == true)
+    }
+
+    @Test func markersForAnUnknownPaintingFail() async throws {
+        let store = LocalGalleryStore(folder: makeFolder())
+        let id = UUID()
+        await #expect(throws: GalleryStoreError.notFound(id)) { try await store.markImageUploaded(for: id) }
+        await #expect(throws: GalleryStoreError.notFound(id)) { try await store.setImageInFlight(true, for: id) }
     }
 
     @Test func aFolderWithoutARecordIsIgnored() async throws {
