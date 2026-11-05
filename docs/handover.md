@@ -19,6 +19,7 @@ Rona is the rebuild of the PuffyPond2 prototype with a Supabase backend. Due dat
 | D4 AppRouter, Route, Home | done: `App/Core/Route.swift`, `App/Shell/AppRouter.swift`, `App/Views/HomeView.swift` |
 | E0 Consent | done: `Consent/` (see below); text and policy URL are placeholders; parental gate dropped for now |
 | E1 Auth | done in code: `Sync/` (see below); the Apple link is not tried against a real Apple ID yet |
+| E3 Supabase repositories | done: `SupabaseGalleryRepository`, `SupabaseStatsRepository` (see below) |
 | E2 LocalGalleryStore | done: `Gallery/Shell/LocalGalleryStore.swift` (see below) |
 | Everything else | not started |
 
@@ -125,6 +126,14 @@ All tables have RLS enabled and no policies yet, so the API denies everything un
 - Known gap: an Apple account already linked to another user (an earlier iPad) gives `alreadyUsed` and a message. Signing in to that existing account on a new device (restore after reinstall, ADR decision 6) is not built; it needs `signInWithIdToken` and belongs with the pull side of E4.
 - Tests that call Supabase through the app are not in CI: Xcode Cloud has no Docker.
 
+## Chunk E3 result
+
+- Core: `StoragePath.image(userID:paintingID:)` (`{user id}/{painting id}.png`, **lowercase**: the Storage policy compares the first folder with `auth.uid()::text`, and `UUID.uuidString` is uppercase, so an uppercase folder is refused), `PaintingRow` and `StatsRow` (the table rows, with the column names; a nil field is left out of the JSON, so an upsert never overwrites `recording_path` or `deleted_at`).
+- Shell: `SupabaseGalleryRepository` and `SupabaseStatsRepository` implement the same protocols as `LocalGalleryStore`. `save` uploads the PNG first (`upsert: true`) and upserts the row second, on the client-made id, so a retry after a failure halfway is safe and no row points at a missing file. `delete` sets `deleted_at` (a tombstone; the cleanup job removes old ones and their files) and throws `GalleryStoreError.notFound` when no row matched. The user id comes from the current session. Stats are one row per painting (`schema_version` plus the `SessionStats` document with its own key names, since the Supabase encoder does not change keys).
+- The `profiles` row must exist before the first painting (`paintings.user_id` references it); `AuthStage` already makes sure of that.
+- Tests: `StoragePathTests`, `PaintingRowTests`, `StatsRowTests` (66 tests in all), plus `SupabaseRepositoriesIntegrationTests`, skipped unless `TEST_RUNNER_SUPABASE_INTEGRATION=1` (Xcode Cloud has no Docker): it signs in anonymously on the local stack and round-trips a painting and its stats, retries a save, reads the image back, deletes (tombstone) and checks `notFound`. It passes. Each run leaves one anonymous user and a tombstoned painting with its file on the local stack. Not run against the hosted project.
+- Not done: `imageData` returns the library's storage error for a missing object instead of `GalleryStoreError.notFound`; the pull side of E4 will need to tell the two apart. There is no paging in `paintings()` (fine at tens of paintings).
+
 ## Hosted Supabase project
 
 - Project `Rona`, ref `smbsoovlrylahmrqsryw`, region ap-southeast-1 (Singapore), free plan (a free project is paused after 7 days without activity; think about a paid plan before release). Created 4 Nov 2026 with Data API on, "automatically expose new tables" on (the migrations have no table `grant`s and rely on it) and automatic RLS on.
@@ -138,7 +147,7 @@ All tables have RLS enabled and no policies yet, so the API denies everything un
 
 ## Next step: other lanes
 
-Done: lane A, D3, D4, E0, E1 (code), E2. Next: E3 (needs E1) and E4 (needs E2, E3). Alongside: D1 audio and D2 templates and quest (lane D), lane B (input) and lane C (paint engine; C4 is the frame-budget gate). Settle the Kids Category and consent wording points below before the TestFlight build.
+Done: lane A, D3, D4, E0, E1, E2, E3. Next: E4, the sync engine (needs E2 and E3: outbox, retry, last-write-wins, tombstones, background uploads). Alongside: D1 audio and D2 templates and quest (lane D), lane B (input) and lane C (paint engine; C4 is the frame-budget gate). Settle the Kids Category and consent wording points below before the TestFlight build.
 
 ## Where to port code from
 
