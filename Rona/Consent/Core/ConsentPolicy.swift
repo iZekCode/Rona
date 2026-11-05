@@ -9,4 +9,11 @@ nonisolated enum ConsentPolicy {
         guard let acceptedVersion else { return true }
         return acceptedVersion < currentVersion
     }
+
+    // The profile row holds the consent of this account. It is written when it has none, or an older
+    // version, and left alone otherwise so the first date of a version is kept.
+    static func needsProfileUpdate(storedVersion: Int?, agreedVersion: Int) -> Bool {
+        guard let storedVersion else { return true }
+        return storedVersion < agreedVersion
+    }
 }

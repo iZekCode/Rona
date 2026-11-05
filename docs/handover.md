@@ -18,6 +18,7 @@ Rona is the rebuild of the PuffyPond2 prototype with a Supabase backend. Due dat
 | D3 Theme and visual tokens | done: `App/Views/Theme.swift` (see below) |
 | D4 AppRouter, Route, Home | done: `App/Core/Route.swift`, `App/Shell/AppRouter.swift`, `App/Views/HomeView.swift` |
 | E0 Consent | done: `Consent/` (see below); text and policy URL are placeholders; parental gate dropped for now |
+| E1 Auth | done in code: `Sync/` (see below); the Apple link is not tried against a real Apple ID yet |
 | E2 LocalGalleryStore | done: `Gallery/Shell/LocalGalleryStore.swift` (see below) |
 | Everything else | not started |
 
@@ -110,9 +111,34 @@ All tables have RLS enabled and no policies yet, so the API denies everything un
 - Placeholders to replace before the TestFlight build (I3): `ConsentView.privacyPolicyURL` (`https://rona.example/privacy`) and the consent wording, which still needs the Kids Category and Apple child-account decisions below.
 - Tests: `ConsentTests` (7). The consent screen was checked on the iPad mini simulator.
 
+## Chunk E1 result
+
+- Core: `AuthState`, `AuthService` (restore, sign in anonymously, link Apple), `AuthPlan` (what to do at launch; nothing before consent), `ProfileRepository`, `AccountLinkError.alreadyUsed`. `ConsentRecord` and `ConsentPolicy.needsProfileUpdate` (write the profile row only when it has no consent or an older version) live in `Consent/Core`.
+- Shell: `SupabaseConfig` (local URL and the publishable key from `supabase status`; made once in `RonaApp`, because every client shares the Keychain), `SupabaseAuthService`, `SupabaseProfileRepository` (select, then upsert), `AuthStage` (`@Observable`), `AppleNonce` (random nonce, SHA-256 for Apple, original for Supabase).
+- `AuthStage.start(agreement:)` runs only with a consent in force (not even a restore before it). It restores the saved session, signs in anonymously when there is none, then makes sure `profiles` holds the consent. It never blocks the UI. A failed restore (offline, expired token) does not fall through to a new anonymous user, which would orphan the paintings on the old one; it sets `failed` and the next call (consent, or the app coming back to the foreground) retries.
+- The session is kept in the Keychain by `supabase-swift` (`KeychainLocalStorage` is its default), so there is no code for restore on launch beyond `auth.session`.
+- UI: a small account button at the bottom right of Home opens `LinkAccountView`, with the Sign in with Apple button (no name or email scope). It shows the state: not connected, anonymous (button), or linked. No parental gate (ADR decision 4, amended).
+- Local config: `supabase/config.toml` enables `[auth.external.apple]` for the native flow with `client_id = "LittleCrew.Rona"` and no secret. The local Auth accepted it and answers a fake ID token with "Unable to detect issuer in ID token for Apple provider".
+- Checked on the local stack: no user before consent; an anonymous user and its `profiles` row after consent; a relaunch restores the session and does not rewrite the row (`updated_at` unchanged). Unit tests: `AuthPlanTests`, `AuthStageTests`, `AppleNonceTests`, plus the consent tests (56 tests in all). Running unit tests starts the host app, so with a consent saved in the simulator they also touch the local stack.
+- The Sign in with Apple capability is added to the `Rona` target (`Rona/Rona.entitlements`, `CODE_SIGN_ENTITLEMENTS` in the project, automatic signing, team `ZU2326AL7G`). Checked: the entitlement is embedded in the simulator build and the file is not copied into the bundle. `project.pbxproj` now carries this real change, so do not `git checkout` it any more; that would remove the capability. Its `objectVersion` is 110 (Xcode 27); that is fine now because the iOS build and tests run on Xcode Cloud and the GitHub `database` job never opens the Xcode project.
+- Not done, needs the owner: try the button on a device or a simulator signed in to an Apple ID, and check the App ID `LittleCrew.Rona` has Sign in with Apple enabled (automatic signing normally does this). For the hosted project, enable the Apple provider in the dashboard with the bundle id as client id.
+- Known gap: an Apple account already linked to another user (an earlier iPad) gives `alreadyUsed` and a message. Signing in to that existing account on a new device (restore after reinstall, ADR decision 6) is not built; it needs `signInWithIdToken` and belongs with the pull side of E4.
+- Tests that call Supabase through the app are not in CI: Xcode Cloud has no Docker.
+
+## Hosted Supabase project
+
+- Project `Rona`, ref `smbsoovlrylahmrqsryw`, region ap-southeast-1 (Singapore), free plan (a free project is paused after 7 days without activity; think about a paid plan before release). Created 4 Nov 2026 with Data API on, "automatically expose new tables" on (the migrations have no table `grant`s and rely on it) and automatic RLS on.
+- Pushed with `supabase db push --remote`: all 7 migrations. Checked there: 3 tables with RLS, 11 table policies and 4 Storage policies, private PNG bucket (10 MB), and `authenticated` can select, insert, update and delete on the three tables. `anon` has the same default table grants, but no policy, so RLS refuses it.
+- Supabase CLI 3.0 targets the local stack by default: use `--remote` for `db push` and `db query` against the linked project (`--read-only` for a query that only reads). A deploy job must pass it too.
+- Auth settings set by hand in the dashboard (not from `config.toml`: `supabase config push` would overwrite them with the local values, including `site_url`): anonymous sign-ins on, manual linking on, Apple provider on with client id `LittleCrew.Rona`, no secret, "Allow users without an email" on.
+- Which server the app uses (`SupabaseConfig`): the simulator uses the local stack, a device and release builds use the hosted project, and the environment variables `SUPABASE_URL` and `SUPABASE_KEY` (Edit Scheme, Run, Arguments) override both. Do not commit the scheme with such a variable in it.
+- Checked on an iPad against the hosted project: anonymous sign-in, the `profiles` row (consent version 1) and the Sign in with Apple link (the user is no longer anonymous, provider `apple`).
+- Functions `delete-account` and `cleanup` are deployed (`supabase functions deploy --use-api --yes`, version 1, `verify_jwt = false` as in `config.toml`; they check the bearer token themselves). Checked on the hosted project with a throwaway anonymous user: no token gives 401, GET gives 405, `cleanup` refuses the publishable key (401); with the user's token the profile, painting, stats and the Storage file were all created (RLS and the bucket policies let the owner write), `delete-account` gave 204 and removed the user, profile, painting, stats and file, and the same token then gave 401.
+- Not done: the daily schedule of `cleanup` (see `docs/supabase-cleanup.md`; needs `pg_cron`, `pg_net` and the service role key in Vault), and CD (GitHub Actions for `db push --remote` and `functions deploy`, Xcode Cloud archive and TestFlight).
+
 ## Next step: other lanes
 
-Done: lane A, D3, D4, E0, E2. Next: E1 auth (needs A1, E0), then E3 (needs E1) and E4 (needs E2, E3). Alongside: D1 audio and D2 templates and quest (lane D), lane B (input) and lane C (paint engine; C4 is the frame-budget gate). Settle the Kids Category and consent wording points below before the TestFlight build.
+Done: lane A, D3, D4, E0, E1 (code), E2. Next: E3 (needs E1) and E4 (needs E2, E3). Alongside: D1 audio and D2 templates and quest (lane D), lane B (input) and lane C (paint engine; C4 is the frame-budget gate). Settle the Kids Category and consent wording points below before the TestFlight build.
 
 ## Where to port code from
 

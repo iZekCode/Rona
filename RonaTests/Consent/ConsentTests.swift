@@ -14,6 +14,19 @@ struct ConsentPolicyTests {
     @Test func newerVersionAsksAgain() {
         #expect(ConsentPolicy.needsConsent(acceptedVersion: 1, currentVersion: 2))
     }
+
+    @Test func profileWithoutConsentIsWritten() {
+        #expect(ConsentPolicy.needsProfileUpdate(storedVersion: nil, agreedVersion: 1))
+    }
+
+    @Test func profileWithAnOlderVersionIsUpdated() {
+        #expect(ConsentPolicy.needsProfileUpdate(storedVersion: 1, agreedVersion: 2))
+    }
+
+    @Test func profileWithTheSameOrANewerVersionIsLeftAlone() {
+        #expect(!ConsentPolicy.needsProfileUpdate(storedVersion: 2, agreedVersion: 2))
+        #expect(!ConsentPolicy.needsProfileUpdate(storedVersion: 3, agreedVersion: 2))
+    }
 }
 
 struct ConsentStoreTests {
@@ -49,6 +62,19 @@ struct ConsentStoreTests {
 
         #expect(!again.needsConsent)
         #expect(again.acceptedAt == date)
+    }
+
+    @Test func agreementExistsOnlyWhileTheConsentIsCurrent() {
+        let defaults = makeDefaults()
+        let store = ConsentStore(defaults: defaults)
+        #expect(store.agreement == nil)
+
+        let date = Date(timeIntervalSince1970: 3_000)
+        store.accept(at: date)
+        #expect(store.agreement == ConsentRecord(acceptedAt: date, version: ConsentPolicy.currentVersion))
+
+        defaults.set(ConsentPolicy.currentVersion - 1, forKey: "consent.version")
+        #expect(ConsentStore(defaults: defaults).agreement == nil)
     }
 
     @Test func consentFromAnOlderVersionAsksAgain() {
