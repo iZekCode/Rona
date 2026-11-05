@@ -81,8 +81,7 @@ The composite foreign key `(painting_id, user_id)` on `painting_stats` already g
 
 ## Edge function
 
-- `delete-account` (required by App Store guideline 5.1.1(v)): verify the caller, delete their Storage objects, then delete the auth user. The `on delete cascade` chain removes `profiles`, `paintings` and `painting_stats`. Called behind the parental gate.
-
+- `delete-account` (required by App Store guideline 5.1.1(v)): verify the caller, delete their Storage objects, then delete the auth user. The `on delete cascade` chain removes `profiles`, `paintings` and `painting_stats`.
 ## Swift contracts (sketch)
 
 ```swift
