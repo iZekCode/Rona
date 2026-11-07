@@ -1,10 +1,10 @@
-# Supabase rebuild: backlog and chunking
+# Backlog and chunking
 
-Plan for building Rona (the rebuild of the PuffyPond2 prototype) from scratch with a Supabase backend. This document orders the work into chunks and marks what can run in parallel and what must run in sequence.
+Plan for building Rona with a Supabase backend. This document orders the work into chunks and marks what can run in parallel and what must run in sequence.
 
 ## Scope and decisions
 
-The decisions below are recorded in [ADR 0001](adr/0001-supabase-backend.md). The data model is in [supabase-erd.md](supabase-erd.md).
+The decisions below are recorded in [ADR 0001](adr/0001-backend-architecture.md). The data model is in [data-model.md](data-model.md).
 
 - **Platform:** iPad only, landscape, full screen only (`UIRequiresFullScreen = YES`). No Mac, Catalyst, Stage Manager or split view.
 - **Backend:** Supabase for auth, Postgres (paintings, session stats, daily quest) and Storage (painting PNGs).
@@ -27,7 +27,7 @@ This reverses the PuffyPond2 README promise of "No network, no accounts". Wave 0
 |---|---|---|---|---|
 | 0.1 | Product decisions and ADR | SEQ | none | ADR records: auth model (Sign in with Apple, anonymous-first or not), parental consent approach for a children's app, what is synced (PNG, stats, timelapse or not), local-first sync policy, what is never uploaded |
 | 0.2 | Project skeleton | SEQ | 0.1 | iPad-only Xcode project, landscape lock, `UIRequiresFullScreen`, feature folders, test target, CI, `supabase init` with local stack, `supabase-swift` via SPM |
-| 0.3 | Contracts | SEQ | 0.2 | ERD and schema draft in [supabase-erd.md](supabase-erd.md), domain types (`Painting`, `SessionStats`, `TemplateID`), and repository protocols (`GalleryRepository`, `StatsRepository`, `QuestSource`). This is the seam that lets Wave 1 run in parallel |
+| 0.3 | Contracts | SEQ | 0.2 | ERD and schema draft in [data-model.md](data-model.md), domain types (`Painting`, `SessionStats`, `TemplateID`), and repository protocols (`GalleryRepository`, `StatsRepository`, `QuestSource`). This is the seam that lets Wave 1 run in parallel |
 
 ## Wave 1: Four parallel lanes
 
@@ -117,7 +117,7 @@ The engine path (Lane B, Lane C, F1 to F5, H1) is not on the critical path, so i
 
 ## Timeline: due Sunday 15 November 2026
 
-Assumptions: planning starts Wednesday 4 November, which leaves 12 days. The existing PuffyPond2 code (a separate, read-only reference repo) is ported and used as reference rather than rewritten blind, and work is split across parallel sessions per lane. A full rebuild of every chunk does not fit, so the plan has a cut line (see below).
+Assumptions: planning starts Wednesday 4 November, which leaves 12 days. The existing PuffyPond2 code (a separate, read-only reference repo) is ported and used as reference rather than written blind, and work is split across parallel sessions per lane. Not every chunk fits, so the plan has a cut line (see below).
 
 | Day | Date | Focus | Chunks |
 |---|---|---|---|

@@ -1,20 +1,20 @@
 # Handover
 
-Rona is the rebuild of the PuffyPond2 prototype with a Supabase backend. Due date: Sunday 15 November 2026. Planning was done on Wednesday 4 November 2026.
+Rona is an iPad painting app with a Supabase backend; PuffyPond2 is the reference code it ports from. Due date: Sunday 15 November 2026. Planning was done on Wednesday 4 November 2026.
 
 ## Status
 
 | Chunk | State |
 |---|---|
-| 0.1 Product decisions and ADR | done: `docs/adr/0001-supabase-backend.md` |
+| 0.1 Product decisions and ADR | done: `docs/adr/0001-backend-architecture.md` |
 | 0.2 Project skeleton | done (see below) |
-| 0.3 Contracts (ERD, Swift protocols) | done: `docs/supabase-erd.md` and the Swift types (see below) |
+| 0.3 Contracts (ERD, Swift protocols) | done: `docs/data-model.md` and the Swift types (see below) |
 | A1 Migrations | done: `supabase/migrations/` (see below) |
 | A2 RLS policies | done: `add_rls_policies` migration |
 | A3 Storage bucket | done: `create_paintings_bucket` migration |
 | A4 pgTAP tests | done: `supabase/tests/database/rls.test.sql`, run by the `database` CI job |
 | A5 delete-account function | done: `supabase/functions/delete-account` |
-| A6 Cleanup job | done: `supabase/functions/cleanup`, see `docs/supabase-cleanup.md`; not scheduled yet |
+| A6 Cleanup job | done: `supabase/functions/cleanup`, see `docs/cleanup-job.md`; scheduled on the hosted project on 2026-11-06 (`cleanup-daily`, 03:00 UTC), first scheduled run not checked yet |
 | D3 Theme and visual tokens | done: `App/Views/Theme.swift` (see below) |
 | D4 AppRouter, Route, Home | done: `App/Core/Route.swift`, `App/Shell/AppRouter.swift`, `App/Views/HomeView.swift` |
 | E0 Consent | done: `Consent/` (see below); text and policy URL are placeholders; parental gate dropped for now |
@@ -81,7 +81,7 @@ All tables have RLS enabled and no policies yet, so the API denies everything un
 
 ## Chunk A6 result
 
-`cleanup` edge function plus the migration `add_abandoned_users_function` and `supabase/functions/_shared/storage.ts` (the file removal that `delete-account` now shares). Rules, thresholds, caveats and the production schedule are in `docs/supabase-cleanup.md`. Tests: `supabase/tests/database/cleanup.test.sql` (7 pgTAP tests, 25 in total), and an end-to-end run on the local stack with four users: only the old abandoned user and the 100-day-old tombstone were removed (with their files), a 10-day-old tombstone and users with a live painting stayed, bad or user tokens got 401, and a second run did nothing. `delete-account` was run again after the refactor and still passes. Not done: the schedule itself (needs the hosted project), a CI job for the functions, and a user with more than 100 files.
+`cleanup` edge function plus the migration `add_abandoned_users_function` and `supabase/functions/_shared/storage.ts` (the file removal that `delete-account` now shares). Rules, thresholds, caveats and the production schedule are in `docs/cleanup-job.md`. Tests: `supabase/tests/database/cleanup.test.sql` (7 pgTAP tests, 25 in total), and an end-to-end run on the local stack with four users: only the old abandoned user and the 100-day-old tombstone were removed (with their files), a 10-day-old tombstone and users with a live painting stayed, bad or user tokens got 401, and a second run did nothing. `delete-account` was run again after the refactor and still passes. Not done: a CI job for the functions, and a user with more than 100 files.
 
 ## Chunk D3 and D4 result
 

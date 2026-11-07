@@ -2,14 +2,14 @@
 
 Rona is an iPad painting app for children. They paint in the air: a fist and an arm sweep lay wet oil paint on an easel, tracked by the front camera (Vision hand and body pose). Movement stats (range of motion, reach, grip cycles, heatmap, hand dominance) are recorded per painting. Backend: Supabase.
 
-Rona is the rebuild of the earlier prototype in `../PuffyPond2` (read-only reference, do not edit it).
+Code to port from lives in `../PuffyPond2` (read-only reference, do not edit it).
 
 ## Read first
 
 - `docs/handover.md`: current status, next step, and where to port code from.
-- `docs/adr/0001-supabase-backend.md`: the locked product and backend decisions.
-- `docs/supabase-erd.md`: data model, RLS, Storage, Swift contracts.
-- `docs/supabase-rebuild-backlog.md`: chunked backlog with sequential/parallel marks and the 15 Nov 2026 timeline.
+- `docs/adr/0001-backend-architecture.md`: the locked product and backend decisions.
+- `docs/data-model.md`: data model, RLS, Storage, Swift contracts.
+- `docs/backlog.md`: chunked backlog with sequential/parallel marks and the 15 Nov 2026 timeline.
 
 ## Locked decisions (details in the ADR)
 

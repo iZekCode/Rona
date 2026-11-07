@@ -2,12 +2,12 @@
 
 - Status: accepted
 - Date: 2026-11-04
-- Backlog: [supabase-rebuild-backlog.md](../supabase-rebuild-backlog.md)
-- Data model: [supabase-erd.md](../supabase-erd.md)
+- Backlog: [backlog.md](../backlog.md)
+- Data model: [data-model.md](../data-model.md)
 
 ## Context
 
-Rona is a children's rehabilitation-style painting app, rebuilt from the earlier PuffyPond2 prototype. The prototype kept everything on the device (`Application Support/Gallery/`, one PNG and one JSON sidecar per painting) with no network and no accounts. Rona adds a Supabase backend. Because the users are children and the movement stats are health-adjacent, the decisions below set what leaves the device, who owns it, and who can act on it.
+Rona is a children's rehabilitation-style painting app. The earlier PuffyPond2 prototype kept everything on the device (`Application Support/Gallery/`, one PNG and one JSON sidecar per painting) with no network and no accounts. Rona adds a Supabase backend. Because the users are children and the movement stats are health-adjacent, the decisions below set what leaves the device, who owns it, and who can act on it.
 
 ## Decisions
 
