@@ -1,0 +1,51 @@
+import CoreGraphics
+
+/// An on-screen button an open hand can hover over and hold to press, in view UV (0…1, y down).
+nonisolated struct HoverTarget: Equatable, Sendable {
+    var id: String
+    var frame: CGRect
+}
+
+/// Hover-and-hold: an open hand resting on a button for a second presses it, once, until the hand leaves.
+nonisolated struct HoverDwell: Sendable {
+    /// Seconds an open hand rests on a button to press it.
+    static let duration = 1.0
+
+    /// The ring: which button is filling and how far (0…1); nil while idle or just after a press.
+    private(set) var progress: (id: String, value: Double)?
+    private var time = 0.0
+    private var latched: String?
+    private var waitingForRelease = false
+
+    /// Ignores every hold until the hand has left all buttons. For when the page changes under a resting hand:
+    /// whatever button appears there must not be pressed by a hold that began on the old one.
+    mutating func requireRelease() {
+        waitingForRelease = true
+        time = 0
+        latched = nil
+        progress = nil
+    }
+
+    /// `hoveredID`: the button an open hand is over, or nil. Returns the id when a full hold completes.
+    mutating func update(hoveredID: String?, dt: Double) -> String? {
+        guard let id = hoveredID else {
+            waitingForRelease = false
+            time = 0
+            latched = nil
+            progress = nil
+            return nil
+        }
+        if waitingForRelease || latched == id { return nil }
+        latched = nil
+        if progress?.id != id { time = 0 }
+        time += dt
+        if time + 1e-9 >= Self.duration {
+            latched = id
+            time = 0
+            progress = nil
+            return id
+        }
+        progress = (id, time / Self.duration)
+        return nil
+    }
+}
