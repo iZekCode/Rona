@@ -50,6 +50,7 @@ Dependency rules:
 
 - Work chunk by chunk from the backlog, in dependency order. Mark a chunk done in `docs/handover.md`.
 - Port from `../PuffyPond2` with its tests. Do not copy a large file wholesale; bring the pure `Core` piece and its test first.
+- When porting, split the prototype's files so each file holds one main type and is named after it (`HandState.swift` holds `HandState`), with only small helper types beside it. Name a test file after the type it tests, one suite per file. Rename a prototype type when its name no longer says what it does (`HandTracker` became `PoseTracker`).
 - Update the ADR when a locked decision changes. Do not change one silently.
 - Everything user-facing for children stays simple and low-text.
 - Every Swift file starts with the Xcode header: file name, target (`Rona`, `RonaTests`, `RonaUITests`), and `Created by Filbert Naldo Wijaya on dd/MM/yy.`
