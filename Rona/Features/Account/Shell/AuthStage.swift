@@ -1,6 +1,13 @@
+//
+//  AuthStage.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Observation
 
-// Signs in after consent and records it on the profile, without ever blocking the pages.
+// Logs in after the parent agrees and saves that agreement, without ever holding up the pages.
 @Observable
 final class AuthStage {
     private(set) var state: AuthState = .signedOut
@@ -17,12 +24,12 @@ final class AuthStage {
         self.profiles = profiles
     }
 
-    // Links Apple to the anonymous account; throws AccountLinkError.alreadyUsed if that Apple ID is taken.
+    // Connects an Apple account; fails with alreadyUsed if that Apple account is taken.
     func linkApple(idToken: String, nonce: String) async throws {
         state = try await service.linkApple(idToken: idToken, nonce: nonce)
     }
 
-    // Restores or signs in, then records consent; safe to call again, and a failed restore never makes a new user.
+    // Logs in and saves the agreement; safe to call again, and a failed login never creates a new user.
     func start(agreement: ConsentRecord?) async {
         guard let agreement, !running else { return }
         running = true

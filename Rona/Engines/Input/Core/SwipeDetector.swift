@@ -1,6 +1,13 @@
+//
+//  SwipeDetector.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import simd
 
-// Turns a sideways open-palm swipe into next or previous painting, with a cooldown.
+// Spots an open hand swiping sideways to go to the next or previous painting.
 nonisolated struct SwipeDetector: Sendable {
     enum Swipe: Equatable, Sendable {
         case next
@@ -20,7 +27,7 @@ nonisolated struct SwipeDetector: Sendable {
     private var history: [Int: [Sample]] = [:]
     private var cooldownUntil = -Double.infinity
 
-    // Feeds this frame's hands; returns a swipe when one just finished.
+    // Looks at this frame's hands and returns a swipe when one just ended.
     mutating func feed(_ hands: [HandState], now: Double) -> Swipe? {
         let open = hands.filter { $0.tracking && $0.pose == .open && !$0.isPointer }
         for slot in history.keys where !open.contains(where: { $0.slot == slot }) { history[slot] = nil }

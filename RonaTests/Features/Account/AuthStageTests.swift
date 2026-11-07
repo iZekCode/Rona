@@ -1,3 +1,10 @@
+//
+//  AuthStageTests.swift
+//  RonaTests
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import Testing
 @testable import Rona
@@ -158,7 +165,7 @@ struct AuthStageTests {
     }
 }
 
-// A sign-in service that answers with what the test gives it and counts the calls.
+// A pretend login that answers what the test tells it and counts its calls.
 actor FakeAuth: AuthService {
     private let restored: Result<AuthState, Error>
     private var signedIn: Result<AuthState, Error>
@@ -197,7 +204,7 @@ actor FakeAuth: AuthService {
     }
 }
 
-// A profile store that remembers what it was asked to record.
+// A pretend profile store that remembers what it was asked to save.
 actor FakeProfiles: ProfileRepository {
     struct Entry: Equatable {
         let userID: UUID

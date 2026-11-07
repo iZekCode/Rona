@@ -1,6 +1,13 @@
+//
+//  SyncEngine.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 
-// Keeps device and server in step in the background; a failed run retries with Backoff, then waits for a trigger.
+// Keeps the iPad and the online copy matching in the background; it retries a few times, then waits.
 actor SyncEngine {
     private let local: any LocalSyncStore
     private let remote: any RemoteGallery
@@ -27,12 +34,12 @@ actor SyncEngine {
         self.sleep = sleep
     }
 
-    // Nothing syncs until the app is signed in and the consent is recorded.
+    // Nothing is backed up until the app is logged in and the agreement is saved.
     func enable() {
         enabled = true
     }
 
-    // Syncs now, or asks the running pass to go once more; safe to call any time.
+    // Backs up now, or asks the current backup to do one more round; safe to call any time.
     func run() async {
         guard enabled else { return }
         if running {
@@ -55,7 +62,7 @@ actor SyncEngine {
         } while again
     }
 
-    // The uploader's report on an image, possibly after a relaunch.
+    // Hears that a picture finished uploading, even if the app was just woken up for it.
     func imageUploadFinished(_ id: Painting.ID, success: Bool) async {
         if success {
             uploadFailures[id] = nil
@@ -71,7 +78,7 @@ actor SyncEngine {
 
     // MARK: One pass
 
-    // True when everything the plan asked for was done.
+    // Does one round of backup; true when everything went through.
     private func syncOnce() async -> Bool {
         do {
             let theirs = try await remote.allPaintings()
@@ -90,7 +97,7 @@ actor SyncEngine {
         }
     }
 
-    // Clears in-flight marks the system no longer knows (a force-quit cancels background uploads).
+    // Forgets uploads that iPadOS dropped (for example after a force quit) so they are sent again.
     private func currentSnapshot() async throws -> [LocalPaintingState] {
         let snapshot = try await local.syncSnapshot()
         let stale = snapshot.filter(\.sync.imageInFlight)

@@ -1,7 +1,14 @@
+//
+//  AppleNonce.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import CryptoKit
 import Foundation
 
-// Random nonce for Sign in with Apple, so a stolen ID token cannot be replayed.
+// A one-time random code for Sign in with Apple, so a stolen login cannot be reused.
 nonisolated enum AppleNonce {
     private static let characters = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._")
 

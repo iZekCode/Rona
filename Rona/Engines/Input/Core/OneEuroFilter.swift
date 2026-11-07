@@ -1,7 +1,14 @@
+//
+//  OneEuroFilter.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import simd
 
-// One Euro filter: heavy smoothing when still, low lag when fast, plus a smoothed velocity.
+// Smooths a moving point: steady when the hand is still, quick when it moves fast.
 nonisolated struct OneEuroFilter2D: Sendable {
     var minCutoff: Float
     var beta: Float

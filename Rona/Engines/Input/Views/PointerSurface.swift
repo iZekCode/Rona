@@ -1,7 +1,14 @@
+//
+//  PointerSurface.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import SwiftUI
 
 extension View {
-    // Lets a finger or the Pencil drag a hand here; put it only over the canvas, not buttons.
+    // Lets a finger or Pencil paint on this view; put it only over the canvas, never over buttons.
     func pointerInput(_ input: PointerInput) -> some View {
         overlay {
             GeometryReader { proxy in

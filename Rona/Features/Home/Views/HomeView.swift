@@ -1,6 +1,13 @@
+//
+//  HomeView.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 04/11/26.
+//
+
 import SwiftUI
 
-// The first page: draw, gallery or report; touch only, since the hands are not tracked yet.
+// The home page: paint, see the gallery or the report; uses touch, since hands are not tracked here.
 struct HomeView: View {
     let router: AppRouter
     let auth: AuthStage

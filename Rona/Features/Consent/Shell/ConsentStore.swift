@@ -1,7 +1,14 @@
+//
+//  ConsentStore.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import Observation
 
-// What the parent agreed to, kept on the device.
+// Remembers on the iPad what the parent agreed to.
 @Observable
 final class ConsentStore {
     private(set) var acceptedVersion: Int?

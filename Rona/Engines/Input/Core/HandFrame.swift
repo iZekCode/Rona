@@ -1,6 +1,13 @@
+//
+//  HandFrame.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import simd
 
-// The hand joints the app cares about.
+// The points on a hand that the app looks at.
 nonisolated enum HandJoint: Int, CaseIterable, Sendable {
     case wrist
     case thumbCMC, thumbMP, thumbIP, thumbTip
@@ -10,7 +17,7 @@ nonisolated enum HandJoint: Int, CaseIterable, Sendable {
     case littleMCP, littlePIP, littleTip
 }
 
-// One detected hand; joints in the upright mirrored image, 0...1, y down.
+// One hand the camera found, with its points placed on the mirrored camera picture.
 nonisolated struct HandObservation: Sendable {
     var joints: [SIMD2<Float>?]
     var confidence: Float
@@ -23,7 +30,7 @@ nonisolated struct HandFrame: Sendable {
     var imageAspect: Float
 }
 
-// Upper-body joints as Vision names them; left and right are swapped on the mirrored image.
+// Points on the upper body; the camera's left and right are swapped because the picture is mirrored.
 nonisolated enum BodyJoint: Int, CaseIterable, Sendable {
     case neck
     case leftShoulder, rightShoulder
@@ -37,7 +44,7 @@ nonisolated struct BodyPoint: Sendable {
     var confidence: Float
 }
 
-// One detected upper body, or none when nobody is in view.
+// One upper body the camera found, or none when nobody is in view.
 nonisolated struct BodyFrame: Sendable {
     var points: [BodyPoint?]
     var imageAspect: Float
@@ -51,7 +58,7 @@ nonisolated struct BodyFrame: Sendable {
 }
 
 extension PalmReading {
-    // Reads the palm and counts extended fingers from one hand observation.
+    // Finds the palm and counts how many fingers stick out.
     nonisolated init?(_ hand: HandObservation, aspect: Float) {
         guard let wrist = hand[.wrist] else { return nil }
         let knuckles = [hand[.indexMCP], hand[.middleMCP], hand[.ringMCP], hand[.littleMCP]].compactMap { $0 }

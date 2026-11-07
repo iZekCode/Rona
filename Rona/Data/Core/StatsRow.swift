@@ -1,6 +1,13 @@
+//
+//  StatsRow.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 
-// Session stats as a `painting_stats` row: one JSON document per painting.
+// Movement stats in the shape the online `painting_stats` table expects.
 nonisolated struct StatsRow: Codable, Equatable, Sendable {
     let paintingID: UUID
     let userID: UUID

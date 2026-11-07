@@ -1,7 +1,14 @@
+//
+//  SupabaseAuthService.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import Supabase
 
-// Sign-in through Supabase Auth. The session is kept in the Keychain by the library.
+// Logs in through Supabase and keeps the login safely on the iPad.
 nonisolated struct SupabaseAuthService: AuthService {
     let client: SupabaseClient
 
@@ -26,7 +33,7 @@ nonisolated struct SupabaseAuthService: AuthService {
         }
     }
 
-    // The user id and a fresh token for a background Storage upload.
+    // The user id and a fresh pass that a background upload needs.
     func uploadCredentials() async throws -> BackgroundImageUploader.Credentials {
         let session = try await client.auth.session
         return .init(userID: session.user.id, accessToken: session.accessToken)

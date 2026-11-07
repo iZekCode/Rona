@@ -1,7 +1,14 @@
+//
+//  SupabaseStatsRepository.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import Supabase
 
-// Session stats on Supabase: one `painting_stats` row per painting, written after its painting row.
+// Movement stats online, one row per painting, saved after the painting itself.
 nonisolated struct SupabaseStatsRepository: StatsRepository {
     let client: SupabaseClient
 

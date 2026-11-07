@@ -1,12 +1,19 @@
+//
+//  HoverDwell.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import CoreGraphics
 
-// A button an open hand can hover over and hold to press, in view UV.
+// A button an open hand can hover over and hold to press.
 nonisolated struct HoverTarget: Equatable, Sendable {
     var id: String
     var frame: CGRect
 }
 
-// Hover-and-hold: an open hand resting on a button for a second presses it once.
+// Pressing by hovering: an open hand resting on a button for a second presses it once.
 nonisolated struct HoverDwell: Sendable {
     static let duration = 1.0
 
@@ -15,7 +22,7 @@ nonisolated struct HoverDwell: Sendable {
     private var latched: String?
     private var waitingForRelease = false
 
-    // Ignores holds until the hand leaves every button, so a page change under a resting hand presses nothing.
+    // Ignores presses until the hand moves off every button, so a new page is not pressed by accident.
     mutating func requireRelease() {
         waitingForRelease = true
         time = 0
@@ -23,7 +30,7 @@ nonisolated struct HoverDwell: Sendable {
         progress = nil
     }
 
-    // Returns the id when a full hold on `hoveredID` completes.
+    // Returns the button id once a hand has rested on it long enough.
     mutating func update(hoveredID: String?, dt: Double) -> String? {
         guard let id = hoveredID else {
             waitingForRelease = false

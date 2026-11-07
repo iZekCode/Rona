@@ -1,8 +1,15 @@
+//
+//  PointerInput.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import QuartzCore
 import simd
 
-// Touch and Pencil fallback: a finger or the Pencil drags one always-closed hand.
+// Lets a finger or Pencil paint when the camera is not used.
 final class PointerInput {
     private var tracker = PointerTracker()
 
@@ -11,6 +18,6 @@ final class PointerInput {
     func touch(at uv: SIMD2<Float>) { tracker.touch(at: uv) }
     func lift() { tracker.lift() }
 
-    // This frame's pointer hand, or nil while nothing touches.
+    // The touch hand for this frame, or nothing while no one touches.
     func hand(now: Double = CACurrentMediaTime()) -> HandState? { tracker.hand(now: now) }
 }

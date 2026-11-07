@@ -1,3 +1,10 @@
+//
+//  SwipeDetectorTests.swift
+//  RonaTests
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import Testing
 import simd
@@ -10,7 +17,7 @@ struct SwipeDetectorTests {
         HandState(slot: slot, pose: pose, position: p, velocity: .zero, tracking: tracking)
     }
 
-    // Moves one hand from `from` to `to` and collects the swipes.
+    // Moves one hand from `from` to `to` and collects the swipes it makes.
     private func sweep(_ detector: inout SwipeDetector, slot: Int = 1, pose: HandPose = .open,
                        from: SIMD2<Float>, to: SIMD2<Float>, seconds: Double, start: Double = 0) -> [SwipeDetector.Swipe] {
         let frames = Int(seconds / dt)

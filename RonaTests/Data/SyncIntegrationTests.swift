@@ -1,8 +1,15 @@
+//
+//  SyncIntegrationTests.swift
+//  RonaTests
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import Testing
 @testable import Rona
 
-// Two devices of one account on a real Supabase; needs `supabase start` and TEST_RUNNER_SUPABASE_INTEGRATION=1.
+// Two iPads on one account with a real local Supabase; needs `supabase start` and TEST_RUNNER_SUPABASE_INTEGRATION=1.
 @Suite(.enabled(if: ProcessInfo.processInfo.environment["SUPABASE_INTEGRATION"] != nil))
 struct SyncIntegrationTests {
     private struct Device {
@@ -23,7 +30,7 @@ struct SyncIntegrationTests {
         return Device(store: store, engine: engine, folder: folder)
     }
 
-    // Runs the engine until the condition holds, or fails after about 30 seconds.
+    // Keeps backing up until the check passes, or fails after about 30 seconds.
     private func syncUntil(_ device: Device, _ what: String, _ condition: () async throws -> Bool) async throws {
         for _ in 0..<30 {
             await device.engine.run()

@@ -1,8 +1,15 @@
+//
+//  StoragePath.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 
-// Where a painting's PNG lives in the private bucket `paintings` (docs/data-model.md).
+// Where a painting's picture is stored online.
 nonisolated enum StoragePath {
-    // Lowercase on purpose: the Storage policy compares it with auth.uid(), which is lowercase.
+    // Uses lowercase ids, because the online storage rules only accept lowercase.
     static func image(userID: UUID, paintingID: UUID) -> String {
         "\(userID.uuidString.lowercased())/\(paintingID.uuidString.lowercased()).png"
     }

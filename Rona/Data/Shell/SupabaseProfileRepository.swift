@@ -1,7 +1,14 @@
+//
+//  SupabaseProfileRepository.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import Supabase
 
-// Writes the profile row through the API; row level security lets a user touch only their own row.
+// Saves the profile online; each user can only change their own.
 nonisolated struct SupabaseProfileRepository: ProfileRepository {
     let client: SupabaseClient
 

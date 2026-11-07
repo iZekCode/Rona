@@ -1,6 +1,13 @@
+//
+//  ConsentView.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import SwiftUI
 
-// Shown before anything else, to the parent. Nothing is signed in or uploaded until they agree.
+// The first screen, for the parent; nothing is logged in or uploaded until they agree.
 struct ConsentView: View {
     let consent: ConsentStore
 

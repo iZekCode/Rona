@@ -1,6 +1,13 @@
+//
+//  ConsentPolicy.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 
-// Decides whether the parent must agree again; raise currentVersion when the text changes.
+// Decides if the parent must agree again; raise currentVersion when the agreement text changes.
 nonisolated enum ConsentPolicy {
     static let currentVersion = 1
 
@@ -9,7 +16,7 @@ nonisolated enum ConsentPolicy {
         return acceptedVersion < currentVersion
     }
 
-    // Writes the profile consent only when it has none or an older version.
+    // Updates the profile only when it has no agreement or an older one.
     static func needsProfileUpdate(storedVersion: Int?, agreedVersion: Int) -> Bool {
         guard let storedVersion else { return true }
         return storedVersion < agreedVersion

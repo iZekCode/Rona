@@ -1,9 +1,16 @@
+//
+//  HandFrameTests.swift
+//  RonaTests
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Testing
 import simd
 @testable import Rona
 
 struct HandFrameTests {
-    // A hand with each finger pointing up or curled.
+    // Makes a pretend hand with each finger up or curled.
     private func hand(extended: [HandJoint: Bool] = [:], missing: Set<HandJoint> = []) -> HandObservation {
         var joints = [SIMD2<Float>?](repeating: nil, count: HandJoint.allCases.count)
         func set(_ joint: HandJoint, _ p: SIMD2<Float>) {

@@ -1,7 +1,14 @@
+//
+//  LinkAccountView.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import AuthenticationServices
 import SwiftUI
 
-// For the parent: keeps the paintings on an Apple account, asking for no name or email.
+// For the parent: saves the paintings to an Apple account, without asking for a name or email.
 struct LinkAccountView: View {
     let auth: AuthStage
 

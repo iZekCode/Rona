@@ -1,6 +1,13 @@
+//
+//  SupabaseRemoteGallery.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 
-// The server side of the sync, built from the two Supabase repositories.
+// The online side of the backup, built from the painting and stats stores.
 nonisolated struct SupabaseRemoteGallery: RemoteGallery {
     let gallery: SupabaseGalleryRepository
     let stats: SupabaseStatsRepository

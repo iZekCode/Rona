@@ -1,6 +1,13 @@
+//
+//  Theme.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 04/11/26.
+//
+
 import SwiftUI
 
-// Visual tokens of the treehouse garden look, in iPad sizes.
+// The app's colours and sizes for the treehouse garden look, made for iPad.
 enum Theme {
     static let ink = Color(red: 0.25, green: 0.2, blue: 0.35)
 
@@ -23,7 +30,7 @@ enum Theme {
 }
 
 extension View {
-    // Hides the status bar and home indicator; every page is full screen.
+    // Hides the status bar and home bar, since every page fills the screen.
     func immersive() -> some View {
         statusBarHidden().persistentSystemOverlays(.hidden)
     }

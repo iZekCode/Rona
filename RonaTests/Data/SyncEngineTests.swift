@@ -1,3 +1,10 @@
+//
+//  SyncEngineTests.swift
+//  RonaTests
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import Testing
 @testable import Rona
@@ -10,7 +17,7 @@ struct SyncEngineTests {
                  deletedAt: deleted ? Date(timeIntervalSince1970: seconds + 1) : nil)
     }
 
-    // Builds the fakes in the body: an actor init cannot run in a default argument.
+    // Makes the pretend parts inside the function, because Swift cannot make them as default values.
     private func makeEngine(local: FakeLocal, remote: FakeRemote, uploader: FakeUploader? = nil,
                             sleeps: SleepLog? = nil) -> SyncEngine {
         let uploader = uploader ?? FakeUploader()

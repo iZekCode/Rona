@@ -1,6 +1,13 @@
+//
+//  BigButton.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 04/11/26.
+//
+
 import SwiftUI
 
-// A big rounded pill: gradient fill, white rim, soft colored shadow.
+// A big rounded button with a colour fade, a white edge and a soft shadow.
 struct BigButton: View {
     let title: String
     let symbol: String

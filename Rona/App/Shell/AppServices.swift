@@ -1,7 +1,14 @@
+//
+//  AppServices.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import Network
 
-// App-lifetime services; one Supabase client only, since every client shares the Keychain session.
+// The parts that live as long as the app does; there is only one Supabase connection so logins never clash.
 @MainActor
 final class AppServices {
     static let shared = AppServices()
@@ -37,7 +44,7 @@ final class AppServices {
         Task { await bootstrap() }
     }
 
-    // Signs in from the saved session (after consent) and starts the sync.
+    // Logs back in (once the parent has agreed) and starts the backup.
     func bootstrap() async {
         await auth.start(agreement: ConsentStore().agreement)
         await startSyncIfReady()

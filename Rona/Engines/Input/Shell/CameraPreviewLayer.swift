@@ -1,11 +1,18 @@
+//
+//  CameraPreviewLayer.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import AVFoundation
 
-// The one camera picture shared by every page, with one rotation coordinator for the whole app.
+// The one live camera picture that every page shares.
 nonisolated final class CameraPreviewLayer: AVCaptureVideoPreviewLayer {
     private var rotation: AVCaptureDevice.RotationCoordinator?
     private var rotationObserver: NSKeyValueObservation?
 
-    // Keeps the preview upright on both landscape sides; safe to call often.
+    // Keeps the camera picture upright when the iPad is turned around; safe to call often.
     func followDeviceRotation() {
         if let rotation {
             apply(rotation.videoRotationAngleForHorizonLevelPreview)

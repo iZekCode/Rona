@@ -1,11 +1,18 @@
+//
+//  SessionStats.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 04/11/26.
+//
+
 import Foundation
 
-// A person's left or right hand or arm, not a screen side (the camera is mirrored).
+// The child's own left or right hand or arm, not the left or right of the screen.
 nonisolated enum Side: String, Codable, CaseIterable, CodingKeyRepresentable, Sendable {
     case left, right
 }
 
-// Movement stats of one drawing session, saved as one JSON document per painting.
+// How the child moved during one painting, saved together with that painting.
 nonisolated struct SessionStats: Codable, Equatable, Sendable {
     static let schemaVersion = 1
     static let heatmapColumns = 32
@@ -23,7 +30,7 @@ nonisolated struct SessionStats: Codable, Equatable, Sendable {
 
     init() {}
 
-    // Stats saved before a metric existed decode with that metric empty.
+    // Older saved stats that miss a newer number still load, with that number left empty.
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         duration = try c.decodeIfPresent(TimeInterval.self, forKey: .duration) ?? 0

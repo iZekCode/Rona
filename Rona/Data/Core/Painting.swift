@@ -1,6 +1,13 @@
+//
+//  Painting.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 04/11/26.
+//
+
 import Foundation
 
-// A saved painting; deleting sets deletedAt (a tombstone) so the delete can sync.
+// One saved painting; a deleted one keeps a deleted date so the delete can be backed up.
 nonisolated struct Painting: Identifiable, Equatable, Codable, Sendable {
     let id: UUID
     var templateID: String?

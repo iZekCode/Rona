@@ -1,3 +1,10 @@
+//
+//  HandTracker.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import AVFoundation
 import Vision
 import os
@@ -43,7 +50,7 @@ extension BodyJoint {
     }
 }
 
-// Front camera plus Vision hand and body pose, on device; frames never leave this class.
+// Runs the front camera and finds hands and body on the iPad; the camera picture never leaves it.
 nonisolated final class HandTracker: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
     enum Status: Sendable { case running, denied, unavailable }
 
@@ -151,7 +158,7 @@ nonisolated final class HandTracker: NSObject, AVCaptureVideoDataOutputSampleBuf
         return true
     }
 
-    // Follows the system's idea of up when the iPad is turned between landscape sides.
+    // Keeps the camera picture the right way up when the iPad is turned.
     private func keepUpright(_ connection: AVCaptureConnection, device: AVCaptureDevice) {
         let coordinator = AVCaptureDevice.RotationCoordinator(device: device, previewLayer: nil)
         rotation = coordinator
@@ -165,7 +172,7 @@ nonisolated final class HandTracker: NSObject, AVCaptureVideoDataOutputSampleBuf
         }
     }
 
-    // Prefers 60 fps, which roughly halves input latency; falls back to 30.
+    // Asks the camera for 60 pictures a second so the hand reacts faster; falls back to 30.
     private func preferHighFrameRate(_ device: AVCaptureDevice) {
         let candidates = device.formats.filter { format in
             let size = CMVideoFormatDescriptionGetDimensions(format.formatDescription)

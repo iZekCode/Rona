@@ -1,4 +1,11 @@
-// Passes hand frames to the listening page outside the canvas; a page drops only its own listener.
+//
+//  HandFrameRelay.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
+// Passes hand positions to whichever page is listening; a page only stops its own listening.
 final class HandFrameRelay {
     private var owner: AnyObject?
     private var listener: ((HandFrame) -> Void)?
@@ -8,7 +15,7 @@ final class HandFrameRelay {
         self.listener = listener
     }
 
-    // Drops the listener only if `owner` still holds it.
+    // Stops listening only if `owner` is still the one listening.
     func stopListening(owner: AnyObject) {
         guard self.owner === owner else { return }
         self.owner = nil

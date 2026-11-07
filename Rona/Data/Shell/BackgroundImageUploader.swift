@@ -1,6 +1,13 @@
+//
+//  BackgroundImageUploader.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 
-// Uploads PNGs through a background URLSession; results wait in `pending` until onFinish is set.
+// Sends painting pictures online in the background; results are kept until someone is listening.
 nonisolated final class BackgroundImageUploader: NSObject, ImageUploader, URLSessionTaskDelegate, @unchecked Sendable {
     static let sessionIdentifier = "LittleCrew.Rona.image-upload"
 
@@ -20,7 +27,7 @@ nonisolated final class BackgroundImageUploader: NSObject, ImageUploader, URLSes
 
     nonisolated(unsafe) private var session: URLSession!
 
-    // A test passes its own `identifier`, so it never meets the app's session.
+    // Tests pass their own `identifier` so they never mix with the app's uploads.
     init(baseURL: URL, apiKey: String, identifier: String = BackgroundImageUploader.sessionIdentifier,
          credentials: @escaping @Sendable () async throws -> Credentials) {
         self.baseURL = baseURL
@@ -33,7 +40,7 @@ nonisolated final class BackgroundImageUploader: NSObject, ImageUploader, URLSes
         session = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
     }
 
-    // Sets the finish handler and delivers anything that finished earlier.
+    // Starts listening for finished uploads and hands over any that finished earlier.
     func setOnFinish(_ handler: @escaping @Sendable (Painting.ID, Bool) -> Void) {
         lock.lock()
         self.handler = handler
@@ -43,7 +50,7 @@ nonisolated final class BackgroundImageUploader: NSObject, ImageUploader, URLSes
         for (id, success) in waiting { handler(id, success) }
     }
 
-    // Called by the app delegate when the system relaunches the app for this session.
+    // Called when iPadOS wakes the app because an upload finished.
     func handleSystemEvents(completion: @escaping @MainActor @Sendable () -> Void) {
         lock.lock()
         systemCompletion = completion

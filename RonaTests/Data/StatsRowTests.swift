@@ -1,3 +1,10 @@
+//
+//  StatsRowTests.swift
+//  RonaTests
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import Testing
 @testable import Rona

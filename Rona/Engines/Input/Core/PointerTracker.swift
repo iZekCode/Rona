@@ -1,7 +1,14 @@
+//
+//  PointerTracker.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import simd
 
-// A finger or the Pencil as one always-closed hand, for when the camera is off.
+// Turns a finger or Pencil touch into one painting hand, for when the camera is off.
 nonisolated struct PointerTracker: Sendable {
     private var position: SIMD2<Float>?
     private var previous: SIMD2<Float>?
@@ -9,7 +16,7 @@ nonisolated struct PointerTracker: Sendable {
 
     var isTouching: Bool { position != nil }
 
-    // A touch went down or moved; positions outside the view are held at its edge.
+    // The finger touched or moved; touches outside the area stick to its edge.
     mutating func touch(at uv: SIMD2<Float>) {
         let p = simd_clamp(uv, SIMD2<Float>(repeating: 0), SIMD2<Float>(repeating: 1))
         position = p
@@ -22,7 +29,7 @@ nonisolated struct PointerTracker: Sendable {
         lastFrame = nil
     }
 
-    // This frame's hand, or nil while nothing touches.
+    // The touch hand for this frame, or nothing while no one touches.
     mutating func hand(now: Double) -> HandState? {
         guard let position else { return nil }
         let dt = Float(max(now - (lastFrame ?? now - 1.0 / 60), 1.0 / 240))

@@ -1,8 +1,15 @@
+//
+//  SupabaseRepositoriesIntegrationTests.swift
+//  RonaTests
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import Testing
 @testable import Rona
 
-// Needs `supabase start` and TEST_RUNNER_SUPABASE_INTEGRATION=1; skipped otherwise.
+// Needs a running local Supabase (`supabase start`) and TEST_RUNNER_SUPABASE_INTEGRATION=1, otherwise skipped.
 @Suite(.enabled(if: ProcessInfo.processInfo.environment["SUPABASE_INTEGRATION"] != nil))
 struct SupabaseRepositoriesIntegrationTests {
     @Test func paintingAndStatsRoundTripThroughSupabase() async throws {

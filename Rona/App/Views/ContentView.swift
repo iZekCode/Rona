@@ -1,3 +1,10 @@
+//
+//  ContentView.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 04/11/26.
+//
+
 import SwiftUI
 
 struct ContentView: View {
@@ -42,7 +49,7 @@ struct ContentView: View {
     }
 }
 
-// Stand-in for a page that is not built yet.
+// Fills in for a page we have not built yet.
 private struct PlaceholderPage: View {
     let router: AppRouter
 

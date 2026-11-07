@@ -1,6 +1,13 @@
+//
+//  LocalGalleryStore.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 
-// Paintings as files, one folder each; painting.json is written last, so a folder without it is ignored.
+// Keeps paintings as files on the iPad, one folder each; a folder without painting.json is an unfinished save.
 actor LocalGalleryStore: GalleryRepository, StatsRepository, LocalSyncStore {
     private let folder: URL
     private let now: @Sendable () -> Date
@@ -16,7 +23,7 @@ actor LocalGalleryStore: GalleryRepository, StatsRepository, LocalSyncStore {
         try await allPaintings().filter { !$0.isDeleted }
     }
 
-    // Every record including tombstones, newest first.
+    // Every painting, deleted ones included, newest first.
     func allPaintings() async throws -> [Painting] {
         let entries = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
         return entries

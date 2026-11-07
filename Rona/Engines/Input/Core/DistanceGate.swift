@@ -1,6 +1,13 @@
+//
+//  DistanceGate.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 
-// Decides when the person stands at the right distance, from shoulder width in the camera image.
+// Tells when the child stands at the right distance, judging by how wide their shoulders look on camera.
 nonisolated struct DistanceGate: Sendable {
     enum State: Equatable, Sendable {
         case noPerson, tooClose, tooFar, offCenter

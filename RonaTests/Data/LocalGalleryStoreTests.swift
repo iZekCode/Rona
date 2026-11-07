@@ -1,3 +1,10 @@
+//
+//  LocalGalleryStoreTests.swift
+//  RonaTests
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import Testing
 @testable import Rona
@@ -276,7 +283,7 @@ struct LocalGalleryStoreTests {
     }
 }
 
-// A clock that moves one second per reading, so a second delete would be visible.
+// A pretend clock that moves one second each time it is read.
 private final class Clock: @unchecked Sendable {
     private let lock = NSLock()
     private var seconds: TimeInterval = 0

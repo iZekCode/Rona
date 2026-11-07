@@ -1,12 +1,19 @@
+//
+//  Quest.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 04/11/26.
+//
+
 import Foundation
 
-// The challenge of the day; its id is saved as the painting's templateID.
+// Today's challenge; its id is saved with the painting.
 nonisolated struct Quest: Equatable, Identifiable, Sendable {
     let id: String
     let title: String
 }
 
-// Picks the quest for a date without I/O, clock or randomness, so every child gets the same one.
+// Picks the challenge for a date, the same for every child.
 nonisolated protocol QuestSource: Sendable {
     func quest(on date: Date) -> Quest
 }

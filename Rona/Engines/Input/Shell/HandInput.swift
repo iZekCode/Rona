@@ -1,8 +1,15 @@
+//
+//  HandInput.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import QuartzCore
 import simd
 
-// Turns camera frames into two smooth, predicted hands.
+// Turns camera readings into two smooth hands that move without lag.
 final class HandInput {
     struct Tracked {
         let id: Int
@@ -71,10 +78,10 @@ final class HandInput {
         hand.lastSample = now
     }
 
-    // Forgets every hand, so nothing keeps painting from a stale pose.
+    // Forgets all hands, so nothing keeps painting from an old position.
     func reset() { tracked.removeAll() }
 
-    // Smooths at render rate with a little prediction to hide camera latency.
+    // Moves each hand smoothly every frame and guesses ahead a little to hide camera delay.
     func advance(dt: Float, now: Double) -> [HandState] {
         var states: [HandState] = []
         let follow = 1 - exp(-dt * 22)

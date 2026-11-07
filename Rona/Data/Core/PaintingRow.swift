@@ -1,6 +1,13 @@
+//
+//  PaintingRow.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 
-// A `paintings` table row; nil fields are left out, so an upsert never overwrites them.
+// A painting in the shape the online `paintings` table expects; empty fields are skipped so nothing is wiped.
 nonisolated struct PaintingRow: Codable, Equatable, Sendable {
     let id: UUID
     let userID: UUID
@@ -20,7 +27,7 @@ nonisolated struct PaintingRow: Codable, Equatable, Sendable {
         case deletedAt = "deleted_at"
     }
 
-    // The row to write for a painting of this user.
+    // Builds the table row for this user's painting.
     init(_ painting: Painting, userID: UUID) {
         id = painting.id
         self.userID = userID

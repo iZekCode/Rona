@@ -1,7 +1,14 @@
+//
+//  SupabaseGalleryRepository.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import Supabase
 
-// Paintings on Supabase: the PNG in the private bucket, one row in `paintings`; only the sync engine calls it.
+// Paintings online: the picture in private storage plus one row in `paintings`; only the backup uses this.
 nonisolated struct SupabaseGalleryRepository: GalleryRepository {
     let client: SupabaseClient
     var now: @Sendable () -> Date = { Date() }
@@ -30,7 +37,7 @@ nonisolated struct SupabaseGalleryRepository: GalleryRepository {
             .download(path: StoragePath.image(userID: userID, paintingID: id))
     }
 
-    // Every painting including tombstones, newest first.
+    // Every painting online, deleted ones included, newest first.
     func allPaintings() async throws -> [Painting] {
         let rows: [PaintingRow] = try await client.from("paintings")
             .select()
@@ -40,7 +47,7 @@ nonisolated struct SupabaseGalleryRepository: GalleryRepository {
         return rows.map(\.painting)
     }
 
-    // PNG first, then the row, so no row points at a missing file; both steps are idempotent.
+    // Sends the picture first and then the row, so a row never points at a missing picture; safe to retry.
     func save(_ painting: Painting, png: Data) async throws {
         let userID = try await currentUserID()
         let path = StoragePath.image(userID: userID, paintingID: painting.id)
@@ -49,7 +56,7 @@ nonisolated struct SupabaseGalleryRepository: GalleryRepository {
         try await pushRow(painting)
     }
 
-    // The row alone, for a PNG the background uploader already sent.
+    // Sends only the row, for a picture that was already uploaded in the background.
     func pushRow(_ painting: Painting) async throws {
         let row = PaintingRow(painting, userID: try await currentUserID())
         try await client.from("paintings")
@@ -57,7 +64,7 @@ nonisolated struct SupabaseGalleryRepository: GalleryRepository {
             .execute()
     }
 
-    // A tombstone, not a removal; the cleanup job deletes old ones.
+    // Marks the painting deleted online; a cleanup job erases it for good later.
     func delete(id: Painting.ID) async throws {
         let rows: [PaintingRow] = try await client.from("paintings")
             .update(Tombstone(deletedAt: now()))

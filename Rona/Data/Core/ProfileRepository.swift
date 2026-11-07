@@ -1,7 +1,14 @@
+//
+//  ProfileRepository.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 
-// The account's profile row, which holds the consent (ADR 0001, decision 4).
+// The account's profile, which stores the parent's agreement.
 nonisolated protocol ProfileRepository: Sendable {
-    // Records this consent unless the row already holds this version or a newer one.
+    // Saves this agreement unless the profile already has this version or a newer one.
     func record(_ consent: ConsentRecord, for userID: UUID) async throws
 }

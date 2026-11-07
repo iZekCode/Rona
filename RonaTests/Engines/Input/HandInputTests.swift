@@ -1,9 +1,16 @@
+//
+//  HandInputTests.swift
+//  RonaTests
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Testing
 import simd
 @testable import Rona
 
 struct HandInputTests {
-    // A frame with one hand at `palm`, fist or open.
+    // Makes a camera reading with one hand at `palm`, open or as a fist.
     private func frame(palm: SIMD2<Float>, fist: Bool) -> HandFrame {
         var joints = [SIMD2<Float>?](repeating: nil, count: HandJoint.allCases.count)
         joints[HandJoint.wrist.rawValue] = palm + SIMD2(0, 0.1)

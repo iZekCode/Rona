@@ -1,7 +1,14 @@
+//
+//  SupabaseConfig.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import Supabase
 
-// Local stack in the simulator, hosted project on a device; SUPABASE_URL and SUPABASE_KEY override both.
+// Which server to use: a local one in the simulator, the real one on an iPad, unless the scheme says otherwise.
 nonisolated enum SupabaseConfig {
     private static let hostedURL = "https://smbsoovlrylahmrqsryw.supabase.co"
     private static let hostedKey = "sb_publishable_HaRhCVGc7saBWibg2tJTjQ_UlUg5CBP"

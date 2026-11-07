@@ -1,13 +1,20 @@
+//
+//  SyncPlan.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 
-// What the device remembers about one painting's trip to the server, so bytes are not sent twice.
+// What this iPad remembers about backing up one painting, so nothing is sent twice.
 nonisolated struct SyncState: Codable, Equatable, Sendable {
     var imageUploaded = false
     var imageInFlight = false
     var statsPushed = false
 }
 
-// One painting as the device sees it.
+// One painting as this iPad sees it.
 nonisolated struct LocalPaintingState: Equatable, Sendable {
     let painting: Painting
     let hasStats: Bool
@@ -23,7 +30,7 @@ nonisolated enum SyncAction: Equatable, Sendable {
     case download(UUID)
 }
 
-// Works out the sync actions from the device and server lists, with no I/O; a delete always wins.
+// Compares this iPad with the online copy and lists what to send or fetch; a delete always wins.
 nonisolated enum SyncPlan {
     static func actions(local: [LocalPaintingState], remote: [Painting]) -> [SyncAction] {
         let remoteByID = Dictionary(remote.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })

@@ -1,8 +1,15 @@
+//
+//  HoverDwellTests.swift
+//  RonaTests
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Testing
 @testable import Rona
 
 struct HoverDwellTests {
-    // Holds on `id` for `seconds`; returns the ids that fired.
+    // Rests on button `id` for `seconds` and returns the buttons that got pressed.
     private func hold(_ dwell: inout HoverDwell, _ id: String?, seconds: Double, dt: Double = 0.1) -> [String] {
         var fired: [String] = []
         for _ in 0..<Int((seconds / dt).rounded()) {

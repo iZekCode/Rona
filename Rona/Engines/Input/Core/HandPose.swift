@@ -1,12 +1,19 @@
+//
+//  HandPose.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import simd
 
-// Big, forgiving poses only, no fiddly finger gestures.
+// Only big, easy hand shapes: open or fist.
 nonisolated enum HandPose: Equatable, Sendable {
     case open
     case fist
 }
 
-// One hand as the game sees it, in view UV (0...1, y down).
+// One hand as the game sees it, placed on the screen.
 nonisolated struct HandState: Sendable {
     var slot: Int
     var pose: HandPose
@@ -15,13 +22,13 @@ nonisolated struct HandState: Sendable {
     var tracking: Bool
     var isPointer = false
 
-    // A finger or the Pencil as the left hand: always a fist.
+    // A finger or Pencil touch acting as the left hand, always painting.
     static func pointer(at p: SIMD2<Float>, previous: SIMD2<Float>, dt: Float) -> HandState {
         HandState(slot: 0, pose: .fist, position: p, velocity: (p - previous) / dt, tracking: true, isPointer: true)
     }
 }
 
-// Palm-level reading of one Vision observation.
+// What the camera reads from one palm.
 nonisolated struct PalmReading: Sendable {
     var palm: SIMD2<Float>
     var extendedFingers: Int
@@ -32,7 +39,7 @@ nonisolated struct PalmReading: Sendable {
     }
 }
 
-// Turns each frame's finger reading into a steady pose, with hysteresis so it doesn't flicker.
+// Turns jumpy finger counts into a steady open or fist, so the hand does not flicker.
 nonisolated struct PoseFilter: Sendable {
     private(set) var pose: HandPose
     private var candidateFrames = 0
