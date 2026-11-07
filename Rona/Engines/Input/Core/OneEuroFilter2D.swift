@@ -1,5 +1,5 @@
 //
-//  OneEuroFilter.swift
+//  OneEuroFilter2D.swift
 //  Rona
 //
 //  Created by Filbert Naldo Wijaya on 05/11/26.

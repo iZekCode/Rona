@@ -1,5 +1,5 @@
 //
-//  OneEuroFilterTests.swift
+//  OneEuroFilter2DTests.swift
 //  RonaTests
 //
 //  Created by Filbert Naldo Wijaya on 05/11/26.
@@ -9,7 +9,7 @@ import Testing
 import simd
 @testable import Rona
 
-struct OneEuroFilterTests {
+struct OneEuroFilter2DTests {
     private let dt: Float = 1.0 / 60
 
     @Test func firstSampleIsPassedThrough() {

@@ -1,5 +1,5 @@
 //
-//  HandTracker.swift
+//  PoseTracker.swift
 //  Rona
 //
 //  Created by Filbert Naldo Wijaya on 05/11/26.
@@ -51,7 +51,7 @@ extension BodyJoint {
 }
 
 // Runs the front camera and finds hands and body on the iPad; the camera picture never leaves it.
-nonisolated final class HandTracker: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
+nonisolated final class PoseTracker: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
     enum Status: Sendable { case running, denied, unavailable }
 
     static let mirrored = true
