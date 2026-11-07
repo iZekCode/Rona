@@ -14,7 +14,7 @@ Rona is an iPad painting app with a Supabase backend; PuffyPond2 is the referenc
 | A3 Storage bucket | done: `create_paintings_bucket` migration |
 | A4 pgTAP tests | done: `supabase/tests/database/rls.test.sql`, run by the `database` CI job |
 | A5 delete-account function | done: `supabase/functions/delete-account` |
-| A6 Cleanup job | done: `supabase/functions/cleanup`, see `docs/cleanup-job.md`; scheduled on the hosted project on 2026-11-06 (`cleanup-daily`, 03:00 UTC), first scheduled run not checked yet |
+| A6 Cleanup job | done: `supabase/functions/cleanup` (see below); scheduled on the hosted project on 2026-11-06 (`cleanup-daily`, 03:00 UTC), first scheduled run not checked yet |
 | D3 Theme and visual tokens | done: `DesignSystem/Theme.swift` (see below) |
 | D4 AppRouter, Route, Home | done: `App/Core/Route.swift`, `App/Shell/AppRouter.swift`, `Features/Home/Views/HomeView.swift` |
 | E0 Consent | done: `Features/Consent/` (see below); text and policy URL are placeholders; parental gate dropped for now |
@@ -83,7 +83,7 @@ All tables have RLS enabled and no policies yet, so the API denies everything un
 
 ## Chunk A6 result
 
-`cleanup` edge function plus the migration `add_abandoned_users_function` and `supabase/functions/_shared/storage.ts` (the file removal that `delete-account` now shares). Rules, thresholds, caveats and the production schedule are in `docs/cleanup-job.md`. Tests: `supabase/tests/database/cleanup.test.sql` (7 pgTAP tests, 25 in total), and an end-to-end run on the local stack with four users: only the old abandoned user and the 100-day-old tombstone were removed (with their files), a 10-day-old tombstone and users with a live painting stayed, bad or user tokens got 401, and a second run did nothing. `delete-account` was run again after the refactor and still passes. Not done: a CI job for the functions, and a user with more than 100 files.
+`cleanup` edge function plus the migration `add_abandoned_users_function` and `supabase/functions/_shared/storage.ts` (the file removal that `delete-account` now shares). It purges tombstones older than 90 days and deletes anonymous users older than 30 days with no painting row; the thresholds are constants at the top of `supabase/functions/cleanup/index.ts`. The longer write-up (`docs/cleanup-job.md`) was removed on 2026-11-07 and is still in git history. Tests: `supabase/tests/database/cleanup.test.sql` (7 pgTAP tests, 25 in total), and an end-to-end run on the local stack with four users: only the old abandoned user and the 100-day-old tombstone were removed (with their files), a 10-day-old tombstone and users with a live painting stayed, bad or user tokens got 401, and a second run did nothing. `delete-account` was run again after the refactor and still passes. Not done: a CI job for the functions, and a user with more than 100 files.
 
 ## Chunk D3 and D4 result
 
