@@ -3,7 +3,7 @@ import simd
 @testable import Rona
 
 struct HandInputTests {
-    /// A frame with one hand whose palm sits at `palm`, fist or open.
+    // A frame with one hand at `palm`, fist or open.
     private func frame(palm: SIMD2<Float>, fist: Bool) -> HandFrame {
         var joints = [SIMD2<Float>?](repeating: nil, count: HandJoint.allCases.count)
         joints[HandJoint.wrist.rawValue] = palm + SIMD2(0, 0.1)
@@ -71,7 +71,6 @@ struct HandInputTests {
         let centre = (HandInput.reachMin + HandInput.reachMax) / 2
         input.ingest(frame(palm: centre, fist: false), now: 0)
         let hand = input.advance(dt: 1.0 / 60, now: 0.0).first
-        // The palm is the mean of the wrist and the knuckles, a little below the frame's anchor point.
         #expect(hand != nil && abs((hand?.position.x ?? 0) - 0.5) < 0.1)
     }
 }

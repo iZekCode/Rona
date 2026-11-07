@@ -1,8 +1,7 @@
 import AuthenticationServices
 import SwiftUI
 
-// For the parent: keeps the paintings on an Apple account, so they survive a new or reset iPad.
-// No name or email is asked of Apple.
+// For the parent: keeps the paintings on an Apple account, asking for no name or email.
 struct LinkAccountView: View {
     let auth: AuthStage
 

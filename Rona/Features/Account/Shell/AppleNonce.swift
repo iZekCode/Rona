@@ -1,8 +1,7 @@
 import CryptoKit
 import Foundation
 
-// One sign-in attempt with Apple uses a random nonce: Apple gets its SHA-256 and signs it into the ID
-// token, Supabase gets the original and checks the two match. This stops a stolen token from being replayed.
+// Random nonce for Sign in with Apple, so a stolen ID token cannot be replayed.
 nonisolated enum AppleNonce {
     private static let characters = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._")
 

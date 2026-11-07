@@ -43,23 +43,16 @@ extension BodyJoint {
     }
 }
 
-/// Runs the front camera and Vision's hand-pose detector, entirely on device. Camera frames are read here
-/// and dropped; they never leave this class except as joint positions.
+// Front camera plus Vision hand and body pose, on device; frames never leave this class.
 nonisolated final class HandTracker: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
     enum Status: Sendable { case running, denied, unavailable }
 
-    static let mirrored = true                // behave like a mirror
+    static let mirrored = true
 
     let session = AVCaptureSession()
-    /// The one live camera picture. Each page that shows it hosts this same layer, so the session is attached
-    /// once: attaching a second preview layer to the running session blocked the main thread for 9 seconds
-    /// in the prototype.
     let previewLayer = CameraPreviewLayer()
-    /// Set before calling `start`. Delivered on the main actor once per processed frame.
     var onFrame: (@MainActor @Sendable (HandFrame) -> Void)?
-    /// Set before calling `start`. Delivered once per processed frame while `bodyPoseEnabled` is on.
     var onBody: (@MainActor @Sendable (BodyFrame) -> Void)?
-    /// Body pose costs frame time, so only the pages that need it (distance check, canvas) switch it on.
     var bodyPoseEnabled: Bool {
         get { bodyPoseFlag.withLock { $0 } }
         set { bodyPoseFlag.withLock { $0 = newValue } }
@@ -123,9 +116,7 @@ nonisolated final class HandTracker: NSObject, AVCaptureVideoDataOutputSampleBuf
               let input = try? AVCaptureDeviceInput(device: device) else { return false }
 
         session.beginConfiguration()
-        // Leave the audio session to the music engine.
         session.automaticallyConfiguresApplicationAudioSession = false
-        // Arm's-length play makes hands small in the frame, so prefer 720p for reliable detection.
         if session.canSetSessionPreset(.hd1280x720) {
             session.sessionPreset = .hd1280x720
         } else if session.canSetSessionPreset(.vga640x480) {
@@ -147,7 +138,6 @@ nonisolated final class HandTracker: NSObject, AVCaptureVideoDataOutputSampleBuf
         }
         session.addOutput(output)
 
-        // Upright, mirrored buffers: Vision coordinates then map straight onto the screen.
         if let connection = output.connection(with: .video) {
             if connection.isVideoMirroringSupported {
                 connection.automaticallyAdjustsVideoMirroring = false
@@ -161,8 +151,7 @@ nonisolated final class HandTracker: NSObject, AVCaptureVideoDataOutputSampleBuf
         return true
     }
 
-    /// The iPad is used in landscape on either side, and its camera sits on a different edge than the
-    /// iPhone's, so the system says which way is up and we follow it when the iPad is turned around.
+    // Follows the system's idea of up when the iPad is turned between landscape sides.
     private func keepUpright(_ connection: AVCaptureConnection, device: AVCaptureDevice) {
         let coordinator = AVCaptureDevice.RotationCoordinator(device: device, previewLayer: nil)
         rotation = coordinator
@@ -176,7 +165,7 @@ nonisolated final class HandTracker: NSObject, AVCaptureVideoDataOutputSampleBuf
         }
     }
 
-    /// Tracking at 60 fps roughly halves input latency. Falls back to the default 30 fps.
+    // Prefers 60 fps, which roughly halves input latency; falls back to 30.
     private func preferHighFrameRate(_ device: AVCaptureDevice) {
         let candidates = device.formats.filter { format in
             let size = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
@@ -193,7 +182,6 @@ nonisolated final class HandTracker: NSObject, AVCaptureVideoDataOutputSampleBuf
             device.activeVideoMinFrameDuration = CMTime(value: 1, timescale: 60)
             device.unlockForConfiguration()
         } catch {
-            // Keep the default format.
         }
     }
 
@@ -214,14 +202,12 @@ nonisolated final class HandTracker: NSObject, AVCaptureVideoDataOutputSampleBuf
                 var joints = [SIMD2<Float>?](repeating: nil, count: HandJoint.allCases.count)
                 for joint in HandJoint.allCases {
                     guard let point = points[joint.visionName], point.confidence > 0.3 else { continue }
-                    // Vision uses a bottom-left origin; flip to top-left.
                     joints[joint.rawValue] = SIMD2(Float(point.location.x), Float(1 - point.location.y))
                 }
                 hands.append(HandObservation(joints: joints, confidence: observation.confidence))
             }
             if wantsBody { body = bodyFrame(from: bodyRequest.results?.first, aspect: aspect) }
         } catch {
-            // A failed frame is simply skipped.
         }
 
         let frame = HandFrame(hands: hands, imageAspect: aspect)

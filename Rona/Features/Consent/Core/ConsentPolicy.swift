@@ -1,7 +1,6 @@
 import Foundation
 
-// Decides whether the parent has to agree (again). Raise currentVersion when the consent text or
-// what is uploaded changes, and every device asks once more.
+// Decides whether the parent must agree again; raise currentVersion when the text changes.
 nonisolated enum ConsentPolicy {
     static let currentVersion = 1
 
@@ -10,8 +9,7 @@ nonisolated enum ConsentPolicy {
         return acceptedVersion < currentVersion
     }
 
-    // The profile row holds the consent of this account. It is written when it has none, or an older
-    // version, and left alone otherwise so the first date of a version is kept.
+    // Writes the profile consent only when it has none or an older version.
     static func needsProfileUpdate(storedVersion: Int?, agreedVersion: Int) -> Bool {
         guard let storedVersion else { return true }
         return storedVersion < agreedVersion

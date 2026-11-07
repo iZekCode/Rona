@@ -1,6 +1,6 @@
 import Foundation
 
-// A person's left or right hand or arm, not a side of the screen (the front camera is mirrored).
+// A person's left or right hand or arm, not a screen side (the camera is mirrored).
 nonisolated enum Side: String, Codable, CaseIterable, CodingKeyRepresentable, Sendable {
     case left, right
 }

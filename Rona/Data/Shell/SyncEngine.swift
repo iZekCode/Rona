@@ -1,14 +1,6 @@
 import Foundation
 
-// Keeps the device and the server in step, in the background, without the pages knowing.
-//
-// Each run reads the server's list and the device's paintings, asks SyncPlan what differs, and does it:
-// images go up through the background uploader, rows and stats through the API, tombstones both ways, and
-// missing paintings are downloaded. What is already known to be sent is remembered per painting, so a
-// restart or a relaunch by the system just picks up where it was.
-//
-// A failed run is repeated after a growing wait (Backoff) a few times; after that the engine waits for the
-// next trigger (a save, the app coming back, the network returning, a finished upload).
+// Keeps device and server in step in the background; a failed run retries with Backoff, then waits for a trigger.
 actor SyncEngine {
     private let local: any LocalSyncStore
     private let remote: any RemoteGallery
@@ -40,7 +32,7 @@ actor SyncEngine {
         enabled = true
     }
 
-    // Syncs now, or asks the run already going to go round once more. Safe to call from anywhere, any time.
+    // Syncs now, or asks the running pass to go once more; safe to call any time.
     func run() async {
         guard enabled else { return }
         if running {
@@ -63,7 +55,7 @@ actor SyncEngine {
         } while again
     }
 
-    // The uploader's report on an image, possibly after the app was relaunched just for it.
+    // The uploader's report on an image, possibly after a relaunch.
     func imageUploadFinished(_ id: Painting.ID, success: Bool) async {
         if success {
             uploadFailures[id] = nil
@@ -98,8 +90,7 @@ actor SyncEngine {
         }
     }
 
-    // An upload the system no longer knows about (the app was force-quit, which cancels background tasks)
-    // would stay "in flight" forever, so its mark is cleared and the image goes up again.
+    // Clears in-flight marks the system no longer knows (a force-quit cancels background uploads).
     private func currentSnapshot() async throws -> [LocalPaintingState] {
         let snapshot = try await local.syncSnapshot()
         let stale = snapshot.filter(\.sync.imageInFlight)

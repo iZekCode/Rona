@@ -1,9 +1,7 @@
 import Foundation
 import Supabase
 
-// Session stats on Supabase: one row per painting in `painting_stats` with the stats as a JSON document.
-// The composite foreign key (painting_id, user_id) makes the database refuse stats for a painting of
-// another user, and the painting row must exist first.
+// Session stats on Supabase: one `painting_stats` row per painting, written after its painting row.
 nonisolated struct SupabaseStatsRepository: StatsRepository {
     let client: SupabaseClient
 

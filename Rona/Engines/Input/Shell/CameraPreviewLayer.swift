@@ -1,12 +1,11 @@
 import AVFoundation
 
-/// The camera picture shared by every page that shows it. It follows the iPad's rotation through one
-/// coordinator for the whole app: a coordinator per hosting page piled up on the same layer.
+// The one camera picture shared by every page, with one rotation coordinator for the whole app.
 nonisolated final class CameraPreviewLayer: AVCaptureVideoPreviewLayer {
     private var rotation: AVCaptureDevice.RotationCoordinator?
     private var rotationObserver: NSKeyValueObservation?
 
-    /// Keeps the preview upright when the iPad is turned between the two landscape sides. Safe to call often.
+    // Keeps the preview upright on both landscape sides; safe to call often.
     func followDeviceRotation() {
         if let rotation {
             apply(rotation.videoRotationAngleForHorizonLevelPreview)

@@ -2,7 +2,6 @@
 import Foundation
 
 extension AuthStage {
-    // Signs in as nobody and never touches the network, so a preview stays offline.
     static var preview: AuthStage {
         AuthStage(service: PreviewAuth(), profiles: PreviewProfiles())
     }

@@ -1,10 +1,6 @@
 import Foundation
 
-// Paintings and their stats kept as files on the device, one folder per painting:
-// {id}/painting.json (the record), image.png, stats.json and sync.json (what is known about its trip to
-// the server, see SyncState).
-// The record is written last, so a folder without one is a save that never finished and is ignored.
-// A delete keeps the record with its tombstone, and removes the image and stats.
+// Paintings as files, one folder each; painting.json is written last, so a folder without it is ignored.
 actor LocalGalleryStore: GalleryRepository, StatsRepository, LocalSyncStore {
     private let folder: URL
     private let now: @Sendable () -> Date
@@ -20,7 +16,7 @@ actor LocalGalleryStore: GalleryRepository, StatsRepository, LocalSyncStore {
         try await allPaintings().filter { !$0.isDeleted }
     }
 
-    // Every record including tombstones, newest first. The sync engine reads this to push deletes.
+    // Every record including tombstones, newest first.
     func allPaintings() async throws -> [Painting] {
         let entries = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
         return entries
@@ -120,7 +116,6 @@ actor LocalGalleryStore: GalleryRepository, StatsRepository, LocalSyncStore {
 
     private func syncURL(_ id: UUID) -> URL { directory(id).appending(path: "sync.json") }
 
-    // A missing or unreadable file means nothing is known yet, which only costs a repeated upload.
     private func syncState(of id: UUID) -> SyncState {
         guard let data = try? Data(contentsOf: syncURL(id)),
               let state = try? JSONDecoder().decode(SyncState.self, from: data) else { return SyncState() }

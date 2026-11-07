@@ -52,3 +52,4 @@ Dependency rules:
 - Port from `../PuffyPond2` with its tests. Do not copy a large file wholesale; bring the pure `Core` piece and its test first.
 - Update the ADR when a locked decision changes. Do not change one silently.
 - Everything user-facing for children stays simple and low-text.
+- Comments: `//`, one line, only above a file, a type or an important function. Properties and code inside a function stay uncommented; `// MARK:` lines are fine.

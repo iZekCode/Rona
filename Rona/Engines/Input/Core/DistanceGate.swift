@@ -1,25 +1,17 @@
 import Foundation
 
-/// Decides when the person is standing at the right distance to paint, from their shoulder width in
-/// the camera image. Pure: feed it one reading per frame with a timestamp.
+// Decides when the person stands at the right distance, from shoulder width in the camera image.
 nonisolated struct DistanceGate: Sendable {
     enum State: Equatable, Sendable {
         case noPerson, tooClose, tooFar, offCenter
-        /// In the band; `progress` runs 0...1 up to `holdDuration`.
         case holding(progress: Double)
         case ready
     }
 
-    /// Shoulder width as a fraction of the image width. About 0.17 at 1 m on an iPad front camera:
-    /// a 0.40 m shoulder span in a view about 2.4 m wide at that distance. An estimate from the
-    /// camera's field of view, not yet measured on a device; adjust the band if it feels off.
     static let nearWidth: Float = 0.22
     static let farWidth: Float = 0.13
-    /// How far the shoulder midpoint may sit from the image center (0.5), as a fraction of the width.
     static let centerTolerance: Float = 0.18
-    /// How long the person must stay in the band before the page moves on.
     static let holdDuration: TimeInterval = 1.5
-    /// A lost detection shorter than this keeps the hold running.
     static let dropoutGrace: TimeInterval = 0.3
 
     private var holdStart: TimeInterval?

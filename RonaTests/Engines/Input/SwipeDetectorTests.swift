@@ -10,7 +10,7 @@ struct SwipeDetectorTests {
         HandState(slot: slot, pose: pose, position: p, velocity: .zero, tracking: tracking)
     }
 
-    /// Moves one hand from `from` to `to` over `seconds`, starting at `start`, and collects the swipes.
+    // Moves one hand from `from` to `to` and collects the swipes.
     private func sweep(_ detector: inout SwipeDetector, slot: Int = 1, pose: HandPose = .open,
                        from: SIMD2<Float>, to: SIMD2<Float>, seconds: Double, start: Double = 0) -> [SwipeDetector.Swipe] {
         let frames = Int(seconds / dt)
@@ -63,10 +63,8 @@ struct SwipeDetectorTests {
     @Test func cooldownBlocksTheReturnStroke() {
         var detector = SwipeDetector()
         var swipes = sweep(&detector, from: SIMD2(0.8, 0.5), to: SIMD2(0.4, 0.5), seconds: 0.3)
-        // The hand comes back right away: still inside the cooldown, so it doesn't walk the other way.
         swipes += sweep(&detector, from: SIMD2(0.4, 0.5), to: SIMD2(0.8, 0.5), seconds: 0.3, start: 0.33)
         #expect(swipes == [.next])
-        // After the cooldown the next swipe counts.
         swipes += sweep(&detector, from: SIMD2(0.8, 0.5), to: SIMD2(0.4, 0.5), seconds: 0.3, start: 1.5)
         #expect(swipes == [.next, .next])
     }

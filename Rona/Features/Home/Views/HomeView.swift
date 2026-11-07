@@ -1,7 +1,6 @@
 import SwiftUI
 
-// The first page: start drawing, visit the gallery, or look at the report. Touch only, since the
-// hands aren't in the camera yet.
+// The first page: draw, gallery or report; touch only, since the hands are not tracked yet.
 struct HomeView: View {
     let router: AppRouter
     let auth: AuthStage

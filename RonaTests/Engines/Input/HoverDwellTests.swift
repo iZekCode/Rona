@@ -2,7 +2,7 @@ import Testing
 @testable import Rona
 
 struct HoverDwellTests {
-    /// Holds on `id` for `seconds` in steps of `dt`; returns the ids that fired.
+    // Holds on `id` for `seconds`; returns the ids that fired.
     private func hold(_ dwell: inout HoverDwell, _ id: String?, seconds: Double, dt: Double = 0.1) -> [String] {
         var fired: [String] = []
         for _ in 0..<Int((seconds / dt).rounded()) {

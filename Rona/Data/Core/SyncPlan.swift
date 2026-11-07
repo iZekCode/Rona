@@ -1,11 +1,8 @@
 import Foundation
 
-// What the device remembers about one painting's trip to the server. Kept beside the painting, so it
-// survives a restart. The server's own list is the truth about what exists there; these flags only avoid
-// sending the same bytes twice.
+// What the device remembers about one painting's trip to the server, so bytes are not sent twice.
 nonisolated struct SyncState: Codable, Equatable, Sendable {
     var imageUploaded = false
-    // A background upload was handed to the system and has not reported back yet.
     var imageInFlight = false
     var statsPushed = false
 }
@@ -22,15 +19,11 @@ nonisolated enum SyncAction: Equatable, Sendable {
     case pushRow(UUID)
     case pushStats(UUID)
     case pushTombstone(UUID)
-    // The server says it was deleted (on another iPad): delete it here too.
     case applyRemoteTombstone(UUID)
-    // The server has it and this device does not (a new iPad, or a reinstall).
     case download(UUID)
 }
 
-// Works out what to do from the device's paintings and the server's list (tombstones included), with no I/O.
-// Paintings are almost never edited, so there is little to merge: a delete always wins, and the rest is
-// "send what the server lacks, fetch what the device lacks".
+// Works out the sync actions from the device and server lists, with no I/O; a delete always wins.
 nonisolated enum SyncPlan {
     static func actions(local: [LocalPaintingState], remote: [Painting]) -> [SyncAction] {
         let remoteByID = Dictionary(remote.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
@@ -41,12 +34,10 @@ nonisolated enum SyncPlan {
             let theirs = remoteByID[id]
 
             if item.painting.isDeleted {
-                // Only a painting the server holds live needs the tombstone; one it never saw needs nothing.
                 if let theirs, !theirs.isDeleted { actions.append(.pushTombstone(id)) }
                 continue
             }
             guard let theirs else {
-                // The server lacks it: the image goes first, then the row, then the stats.
                 if item.sync.imageInFlight { continue }
                 if !item.sync.imageUploaded {
                     actions.append(.uploadImage(id))

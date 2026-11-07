@@ -7,7 +7,7 @@ nonisolated struct Backoff: Equatable, Sendable {
 
     static let standard = Backoff()
 
-    // `failures` is how many tries in a row have failed so far (1 after the first failure).
+    // `failures` counts tries failed in a row (1 after the first).
     func delay(afterFailures failures: Int) -> TimeInterval {
         guard failures > 0 else { return 0 }
         let doublings = min(failures - 1, 30)

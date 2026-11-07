@@ -13,8 +13,7 @@ nonisolated enum ViewOrigin: Hashable, Sendable {
     }
 }
 
-// Every full-screen page of the app. Payloads are ids only; the images and stats of a draft live
-// in the stage that owns it, so a route stays small and comparable.
+// Every full-screen page; payloads are ids only, so a route stays small.
 nonisolated enum Route: Hashable, Sendable {
     case home
     case modePicker
@@ -27,7 +26,6 @@ nonisolated enum Route: Hashable, Sendable {
     case viewPainting(id: UUID, origin: ViewOrigin)
     case report
 
-    // The easel is live (hands paint) only on the canvas page.
     var isCanvas: Bool {
         if case .canvas = self { return true }
         return false

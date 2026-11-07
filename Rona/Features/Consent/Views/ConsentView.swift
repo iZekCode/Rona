@@ -4,7 +4,6 @@ import SwiftUI
 struct ConsentView: View {
     let consent: ConsentStore
 
-    // Placeholder: replace with the real privacy policy address before the TestFlight build.
     static let privacyPolicyURL = URL(string: "https://rona.example/privacy")!
 
     @Environment(\.openURL) private var openURL

@@ -10,8 +10,7 @@ struct SyncEngineTests {
                  deletedAt: deleted ? Date(timeIntervalSince1970: seconds + 1) : nil)
     }
 
-    // The fakes are made inside the body, not as default arguments: an actor's initializer cannot run in the
-    // nonisolated context of a default argument.
+    // Builds the fakes in the body: an actor init cannot run in a default argument.
     private func makeEngine(local: FakeLocal, remote: FakeRemote, uploader: FakeUploader? = nil,
                             sleeps: SleepLog? = nil) -> SyncEngine {
         let uploader = uploader ?? FakeUploader()
@@ -93,7 +92,7 @@ struct SyncEngineTests {
     @Test func anUploadTheSystemLostIsStartedAgain() async {
         let p = painting()
         let local = FakeLocal([p], states: [p.id: SyncState(imageInFlight: true)])
-        let uploader = FakeUploader()                     // reports no active task
+        let uploader = FakeUploader()
         let engine = makeEngine(local: local, remote: FakeRemote(), uploader: uploader)
         await engine.enable()
 
@@ -173,8 +172,8 @@ struct SyncEngineTests {
 
         await engine.run()
 
-        #expect(await remote.listCalls == 3)           // maxAttempts
-        #expect(await sleeps.values == [2, 4])         // no wait after the last failure
+        #expect(await remote.listCalls == 3)
+        #expect(await sleeps.values == [2, 4])
     }
 
     @Test func aRunThatRecoversStops() async {
@@ -200,7 +199,6 @@ private actor SleepLog {
 
 private actor FakeUploader: ImageUploader {
     private(set) var started: [Painting.ID] = []
-    // What the system reports as running: whatever was handed over, plus what the test starts with.
     private var active: Set<Painting.ID>
 
     init(active: Set<Painting.ID> = []) { self.active = active }

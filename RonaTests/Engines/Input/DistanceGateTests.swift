@@ -50,7 +50,6 @@ struct DistanceGateTests {
         var gate = DistanceGate()
         _ = gate.update(shoulderWidth: good, centerX: 0.5, at: 0)
         _ = gate.update(shoulderWidth: good, centerX: 0.5, at: 1.0)
-        // 0.25 s with nobody detected: the hold carries on.
         _ = gate.update(shoulderWidth: nil, centerX: nil, at: 1.1)
         _ = gate.update(shoulderWidth: nil, centerX: nil, at: 1.25)
         #expect(gate.update(shoulderWidth: good, centerX: 0.5, at: 1.5) == .ready)

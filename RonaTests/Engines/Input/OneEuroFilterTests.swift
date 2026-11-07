@@ -19,7 +19,6 @@ struct OneEuroFilterTests {
     }
 
     @Test func jitterIsSmoothedMoreThanAFastMove() {
-        // Small noise around a point is cut down, but a big jump is followed more closely (low lag).
         var still = OneEuroFilter2D()
         _ = still.filter(SIMD2(0.5, 0.5), dt: dt)
         let noisy = still.filter(SIMD2(0.51, 0.5), dt: dt)

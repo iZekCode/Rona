@@ -1,9 +1,7 @@
 import SwiftUI
 
 extension View {
-    /// Lets a finger or the Apple Pencil drag a hand over this view, as the fallback when the camera is
-    /// off. The touch layer sits on top and takes every touch in the view, so put it only where the
-    /// canvas is, not over buttons.
+    // Lets a finger or the Pencil drag a hand here; put it only over the canvas, not buttons.
     func pointerInput(_ input: PointerInput) -> some View {
         overlay {
             GeometryReader { proxy in

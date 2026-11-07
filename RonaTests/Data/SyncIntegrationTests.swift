@@ -2,12 +2,7 @@ import Foundation
 import Testing
 @testable import Rona
 
-// Two devices of one account, against a real Supabase (the simulator uses the local stack, so run
-// `supabase start` first):
-//   TEST_RUNNER_SUPABASE_INTEGRATION=1 xcodebuild test -scheme Rona -only-testing:RonaTests/SyncIntegrationTests ...
-// Device A saves a painting and syncs it through the real background URLSession, device B (empty) pulls it,
-// then a delete on A reaches B. Skipped otherwise (Xcode Cloud has no Docker). Each run leaves one anonymous
-// user; the cleanup job removes it.
+// Two devices of one account on a real Supabase; needs `supabase start` and TEST_RUNNER_SUPABASE_INTEGRATION=1.
 @Suite(.enabled(if: ProcessInfo.processInfo.environment["SUPABASE_INTEGRATION"] != nil))
 struct SyncIntegrationTests {
     private struct Device {
@@ -55,27 +50,23 @@ struct SyncIntegrationTests {
             try? FileManager.default.removeItem(at: b.folder)
         }
 
-        // A 1x1 PNG.
         let png = try #require(Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="))
         let painting = Painting(templateID: "cat", paintedAt: Date(timeIntervalSince1970: 1_762_300_000))
         var stats = SessionStats()
         stats.duration = 42
         stats.gripCycles = [.left: 3]
 
-        // A saves; its image goes up in the background, then the row and the stats.
         try await a.store.save(painting, png: png)
         try await a.store.save(stats, for: painting.id)
         try await syncUntil(a, "A's painting and stats on the server") {
             try await a.store.syncSnapshot().first?.sync == SyncState(imageUploaded: true, imageInFlight: false, statsPushed: true)
         }
 
-        // B is a new device of the same account: it pulls the painting, its image and its stats.
         try await syncUntil(b, "B to download the painting") { try await b.store.paintings().count == 1 }
         #expect(try await b.store.paintings() == [painting])
         #expect(try await b.store.imageData(for: painting.id) == png)
         #expect(try await b.store.stats(for: painting.id) == stats)
 
-        // A deletes; the tombstone reaches the server and then B.
         try await a.store.delete(id: painting.id)
         try await syncUntil(a, "A's delete on the server") { true }
         try await syncUntil(b, "B to apply the delete") { try await b.store.paintings().isEmpty }

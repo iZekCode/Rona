@@ -40,7 +40,6 @@ struct SyncPlanTests {
     }
 
     @Test func stalePushedFlagsDoNotStopARowTheServerLacks() {
-        // The server lost the row (or never got it) although the image went: push it again.
         let p = painting()
         let state = SyncState(imageUploaded: true, statsPushed: true)
         #expect(plan(local: [local(p, hasStats: true, state)]) == [.pushRow(p.id)])
@@ -85,7 +84,6 @@ struct SyncPlanTests {
     }
 
     @Test func aDeleteWinsOverPendingUploads() {
-        // Deleted on the server, still pending here: the delete is applied, nothing is sent.
         let p = painting()
         var theirs = p
         theirs.deletedAt = Date(timeIntervalSince1970: 500)

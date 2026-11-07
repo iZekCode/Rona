@@ -3,8 +3,7 @@ import simd
 @testable import Rona
 
 struct HandFrameTests {
-    /// A hand with the wrist at the bottom and knuckles above it. Each finger is pointing up (tip far from the
-    /// wrist) or curled (tip back near the knuckle).
+    // A hand with each finger pointing up or curled.
     private func hand(extended: [HandJoint: Bool] = [:], missing: Set<HandJoint> = []) -> HandObservation {
         var joints = [SIMD2<Float>?](repeating: nil, count: HandJoint.allCases.count)
         func set(_ joint: HandJoint, _ p: SIMD2<Float>) {

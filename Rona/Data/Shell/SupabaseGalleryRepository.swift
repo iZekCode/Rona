@@ -1,9 +1,7 @@
 import Foundation
 import Supabase
 
-// Paintings on Supabase: the PNG in the private bucket and one row in `paintings`.
-// Row level security and the bucket policies keep every user to their own paintings. The sync engine (E4)
-// is the only caller; the pages read the local store.
+// Paintings on Supabase: the PNG in the private bucket, one row in `paintings`; only the sync engine calls it.
 nonisolated struct SupabaseGalleryRepository: GalleryRepository {
     let client: SupabaseClient
     var now: @Sendable () -> Date = { Date() }
@@ -32,8 +30,7 @@ nonisolated struct SupabaseGalleryRepository: GalleryRepository {
             .download(path: StoragePath.image(userID: userID, paintingID: id))
     }
 
-    // Every painting of the account including tombstones, newest first: what the sync engine compares with
-    // the device.
+    // Every painting including tombstones, newest first.
     func allPaintings() async throws -> [Painting] {
         let rows: [PaintingRow] = try await client.from("paintings")
             .select()
@@ -43,9 +40,7 @@ nonisolated struct SupabaseGalleryRepository: GalleryRepository {
         return rows.map(\.painting)
     }
 
-    // The PNG goes first and the row second, so no row ever points at a file that is not there. Both steps
-    // are idempotent (upload with upsert, row upsert on the client-made id), so a retry after a failure
-    // halfway is safe.
+    // PNG first, then the row, so no row points at a missing file; both steps are idempotent.
     func save(_ painting: Painting, png: Data) async throws {
         let userID = try await currentUserID()
         let path = StoragePath.image(userID: userID, paintingID: painting.id)
@@ -54,7 +49,7 @@ nonisolated struct SupabaseGalleryRepository: GalleryRepository {
         try await pushRow(painting)
     }
 
-    // The row alone, for when the PNG went up by itself (the sync engine uploads it in the background).
+    // The row alone, for a PNG the background uploader already sent.
     func pushRow(_ painting: Painting) async throws {
         let row = PaintingRow(painting, userID: try await currentUserID())
         try await client.from("paintings")
@@ -62,7 +57,7 @@ nonisolated struct SupabaseGalleryRepository: GalleryRepository {
             .execute()
     }
 
-    // A tombstone, not a removal: the cleanup job deletes old tombstones and their files (A6).
+    // A tombstone, not a removal; the cleanup job deletes old ones.
     func delete(id: Painting.ID) async throws {
         let rows: [PaintingRow] = try await client.from("paintings")
             .update(Tombstone(deletedAt: now()))

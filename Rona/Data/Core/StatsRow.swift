@@ -1,6 +1,6 @@
 import Foundation
 
-// A painting's session stats as a row of the `painting_stats` table: one JSON document per painting.
+// Session stats as a `painting_stats` row: one JSON document per painting.
 nonisolated struct StatsRow: Codable, Equatable, Sendable {
     let paintingID: UUID
     let userID: UUID

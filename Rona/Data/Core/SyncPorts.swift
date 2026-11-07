@@ -1,7 +1,6 @@
 import Foundation
 
-// What the sync engine needs from the device and from the server. The engine knows only these, so a test
-// can stand in for each with a fake.
+// What the sync engine needs from the device and the server, so tests can use fakes.
 
 // The paintings on this device, plus what is remembered about their trip to the server.
 nonisolated protocol LocalSyncStore: Sendable {
@@ -10,12 +9,11 @@ nonisolated protocol LocalSyncStore: Sendable {
     func imageFileURL(for id: Painting.ID) async -> URL
     func stats(for id: Painting.ID) async throws -> SessionStats?
     func setImageInFlight(_ inFlight: Bool, for id: Painting.ID) async throws
-    // The image reached the server; clears the in-flight mark.
     func markImageUploaded(for id: Painting.ID) async throws
     func markStatsPushed(for id: Painting.ID) async throws
     // A painting fetched from the server: stored as already synced.
     func saveFromRemote(_ painting: Painting, png: Data, stats: SessionStats?) async throws
-    // The server says it is deleted: tombstone it here without anything left to push.
+    // The server says it is deleted: tombstone it here with nothing to push.
     func applyRemoteTombstone(for id: Painting.ID) async throws
 }
 
@@ -30,8 +28,7 @@ nonisolated protocol RemoteGallery: Sendable {
     func stats(for id: Painting.ID) async throws -> SessionStats?
 }
 
-// Sends a painting's PNG to the server in the background, so it can finish after the app is closed.
-// It reports back through the handler the engine sets, which may be called after a relaunch.
+// Sends a PNG in the background, so it can finish after the app closes.
 nonisolated protocol ImageUploader: Sendable {
     func start(paintingID: Painting.ID, fileURL: URL) async throws
     // Paintings with an upload still running or waiting in the system.

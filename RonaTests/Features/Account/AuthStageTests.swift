@@ -109,7 +109,7 @@ struct AuthStageTests {
         #expect(!stage.isReady)
 
         await stage.start(agreement: agreement)
-        #expect(!stage.isReady)               // signed in, but the consent is not on the profile yet
+        #expect(!stage.isReady)
 
         await profiles.setFails(false)
         await stage.start(agreement: agreement)

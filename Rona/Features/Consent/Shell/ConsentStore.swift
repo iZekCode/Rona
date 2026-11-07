@@ -1,8 +1,7 @@
 import Foundation
 import Observation
 
-// What the parent agreed to, kept on the device. Sign-in (E1) copies acceptedAt and acceptedVersion
-// into the profile row after the first anonymous sign-in.
+// What the parent agreed to, kept on the device.
 @Observable
 final class ConsentStore {
     private(set) var acceptedVersion: Int?
@@ -20,7 +19,6 @@ final class ConsentStore {
 
     var needsConsent: Bool { ConsentPolicy.needsConsent(acceptedVersion: acceptedVersion) }
 
-    // The consent in force, or nil while the parent still has to agree.
     var agreement: ConsentRecord? {
         guard !needsConsent, let acceptedVersion, let acceptedAt else { return nil }
         return ConsentRecord(acceptedAt: acceptedAt, version: acceptedVersion)

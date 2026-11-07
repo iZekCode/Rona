@@ -2,9 +2,7 @@ import Foundation
 import Testing
 @testable import Rona
 
-// Talks to a real Supabase: the simulator uses the local stack, so run `supabase start` first, then
-//   TEST_RUNNER_SUPABASE_INTEGRATION=1 xcodebuild test -scheme Rona -only-testing:RonaTests/SupabaseRepositoriesIntegrationTests ...
-// Skipped otherwise (Xcode Cloud has no Docker). Each run leaves one anonymous user; the cleanup job removes it.
+// Needs `supabase start` and TEST_RUNNER_SUPABASE_INTEGRATION=1; skipped otherwise.
 @Suite(.enabled(if: ProcessInfo.processInfo.environment["SUPABASE_INTEGRATION"] != nil))
 struct SupabaseRepositoriesIntegrationTests {
     @Test func paintingAndStatsRoundTripThroughSupabase() async throws {
@@ -16,7 +14,6 @@ struct SupabaseRepositoriesIntegrationTests {
         let gallery = SupabaseGalleryRepository(client: client)
         let statsRepository = SupabaseStatsRepository(client: client)
 
-        // A 1x1 PNG.
         let png = try #require(Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="))
         let painting = Painting(templateID: "cat", paintedAt: Date(timeIntervalSince1970: 1_762_300_000))
         var stats = SessionStats()
@@ -25,7 +22,7 @@ struct SupabaseRepositoriesIntegrationTests {
         stats.romDegrees = [.right: 88.5]
 
         try await gallery.save(painting, png: png)
-        try await gallery.save(painting, png: png)                    // a retry is safe
+        try await gallery.save(painting, png: png)
         try await statsRepository.save(stats, for: painting.id)
 
         let listed = try await gallery.paintings()

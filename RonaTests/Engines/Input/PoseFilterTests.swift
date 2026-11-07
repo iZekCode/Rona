@@ -22,7 +22,6 @@ struct PoseFilterTests {
 
     @Test func looseFistKeepsPainting() {
         var filter = PoseFilter(pose: .fist)
-        // One finger creeping out, or a single noisy open frame, must not drop the stroke.
         for fingers in [1, 1, 4, 1, 0, 4, 4, 1, 1] {
             filter.feed(reading(fingers: fingers))
             #expect(filter.pose == .fist)

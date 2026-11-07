@@ -1,11 +1,6 @@
 import Foundation
 
-// Sends a painting's PNG to Storage through a background URLSession: the system keeps the upload going
-// when the app is closed, and relaunches the app to report the result. The request is the plain Storage
-// upload (POST of the raw PNG with the user's token and x-upsert), so a repeated upload just replaces the file.
-//
-// Results come back through `onFinish`. They may arrive before the engine has set it (after a relaunch),
-// so they wait in `pending` until it is set.
+// Uploads PNGs through a background URLSession; results wait in `pending` until onFinish is set.
 nonisolated final class BackgroundImageUploader: NSObject, ImageUploader, URLSessionTaskDelegate, @unchecked Sendable {
     static let sessionIdentifier = "LittleCrew.Rona.image-upload"
 
@@ -23,24 +18,22 @@ nonisolated final class BackgroundImageUploader: NSObject, ImageUploader, URLSes
     private var pending: [(Painting.ID, Bool)] = []
     private var systemCompletion: (@MainActor @Sendable () -> Void)?
 
-    // Set once in init, after super.init, because the delegate is self.
     nonisolated(unsafe) private var session: URLSession!
 
-    // `identifier` names the system's session; a test uses its own so it does not meet the app's session.
+    // A test passes its own `identifier`, so it never meets the app's session.
     init(baseURL: URL, apiKey: String, identifier: String = BackgroundImageUploader.sessionIdentifier,
          credentials: @escaping @Sendable () async throws -> Credentials) {
         self.baseURL = baseURL
         self.apiKey = apiKey
         self.credentials = credentials
         super.init()
-        // Creating the session now reattaches the tasks the system kept while the app was not running.
         let configuration = URLSessionConfiguration.background(withIdentifier: identifier)
         configuration.sessionSendsLaunchEvents = true
         configuration.isDiscretionary = false
         session = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
     }
 
-    // The engine's way to hear about finished uploads. Anything that finished earlier is delivered now.
+    // Sets the finish handler and delivers anything that finished earlier.
     func setOnFinish(_ handler: @escaping @Sendable (Painting.ID, Bool) -> Void) {
         lock.lock()
         self.handler = handler
@@ -50,8 +43,7 @@ nonisolated final class BackgroundImageUploader: NSObject, ImageUploader, URLSes
         for (id, success) in waiting { handler(id, success) }
     }
 
-    // From the app delegate: the system relaunched the app for this session and wants a call when the
-    // events have been handled.
+    // Called by the app delegate when the system relaunches the app for this session.
     func handleSystemEvents(completion: @escaping @MainActor @Sendable () -> Void) {
         lock.lock()
         systemCompletion = completion

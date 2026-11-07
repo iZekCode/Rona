@@ -1,8 +1,7 @@
 import Foundation
 import simd
 
-/// One Euro filter (Casiez et al.): heavy smoothing when the hand is still,
-/// low lag when it moves fast. Also yields a smoothed velocity used for prediction.
+// One Euro filter: heavy smoothing when still, low lag when fast, plus a smoothed velocity.
 nonisolated struct OneEuroFilter2D: Sendable {
     var minCutoff: Float
     var beta: Float

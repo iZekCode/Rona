@@ -2,7 +2,7 @@ import Foundation
 import QuartzCore
 import simd
 
-/// Turns camera frames into two smooth, predicted hands.
+// Turns camera frames into two smooth, predicted hands.
 final class HandInput {
     struct Tracked {
         let id: Int
@@ -19,7 +19,6 @@ final class HandInput {
         var hasCursor = false
     }
 
-    // The part of the camera image that spans the whole view. Generous, so big arm moves reach the edges.
     static let reachMin = SIMD2<Float>(0.08, 0.08)
     static let reachMax = SIMD2<Float>(0.92, 0.86)
 
@@ -72,10 +71,10 @@ final class HandInput {
         hand.lastSample = now
     }
 
-    /// Forgets every hand, e.g. when leaving the canvas, so nothing keeps painting from a stale pose.
+    // Forgets every hand, so nothing keeps painting from a stale pose.
     func reset() { tracked.removeAll() }
 
-    /// Render-rate smoothing with a little prediction to hide camera latency.
+    // Smooths at render rate with a little prediction to hide camera latency.
     func advance(dt: Float, now: Double) -> [HandState] {
         var states: [HandState] = []
         let follow = 1 - exp(-dt * 22)

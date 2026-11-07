@@ -1,10 +1,3 @@
-//
-//  AuthPlan.swift
-//  Rona
-//
-//  Created by Filbert Naldo Wijaya on 05/11/26.
-//
-
 import Foundation
 
 nonisolated enum AuthStep: Equatable, Sendable {
@@ -13,7 +6,7 @@ nonisolated enum AuthStep: Equatable, Sendable {
     case ready
 }
 
-// Decides what to do at launch, with no I/O: nothing happens before consent
+// Decides what to do at launch, with no I/O; nothing happens before consent.
 nonisolated enum AuthPlan {
     static func nextStep(needsConsent: Bool, state: AuthState) -> AuthStep {
         if needsConsent { return .waitForConsent }

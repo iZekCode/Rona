@@ -6,6 +6,6 @@ nonisolated protocol GalleryRepository: Sendable {
     func paintings() async throws -> [Painting]
     func imageData(for id: Painting.ID) async throws -> Data
     func save(_ painting: Painting, png: Data) async throws
-    // Marks the painting as deleted instead of removing it, so the delete can sync.
+    // Marks the painting deleted (a tombstone) so the delete can sync.
     func delete(id: Painting.ID) async throws
 }

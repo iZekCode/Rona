@@ -1,8 +1,4 @@
-/// Passes camera hand frames to whichever page outside the canvas is listening (the review page and
-/// the 3D gallery). The canvas gets its frames from `Playground` directly.
-///
-/// A fading page's `onDisappear` runs after the next page's `onAppear`, so a page may only drop the
-/// listener it installed itself, or it would silence the page that just took over.
+// Passes hand frames to the listening page outside the canvas; a page drops only its own listener.
 final class HandFrameRelay {
     private var owner: AnyObject?
     private var listener: ((HandFrame) -> Void)?
@@ -12,7 +8,7 @@ final class HandFrameRelay {
         self.listener = listener
     }
 
-    /// Drops the listener only if `owner` still holds it.
+    // Drops the listener only if `owner` still holds it.
     func stopListening(owner: AnyObject) {
         guard self.owner === owner else { return }
         self.owner = nil
