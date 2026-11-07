@@ -15,14 +15,15 @@ Rona is an iPad painting app with a Supabase backend; PuffyPond2 is the referenc
 | A4 pgTAP tests | done: `supabase/tests/database/rls.test.sql`, run by the `database` CI job |
 | A5 delete-account function | done: `supabase/functions/delete-account` |
 | A6 Cleanup job | done: `supabase/functions/cleanup`, see `docs/cleanup-job.md`; scheduled on the hosted project on 2026-11-06 (`cleanup-daily`, 03:00 UTC), first scheduled run not checked yet |
-| D3 Theme and visual tokens | done: `App/Views/Theme.swift` (see below) |
-| D4 AppRouter, Route, Home | done: `App/Core/Route.swift`, `App/Shell/AppRouter.swift`, `App/Views/HomeView.swift` |
-| E0 Consent | done: `Consent/` (see below); text and policy URL are placeholders; parental gate dropped for now |
-| E1 Auth | done in code: `Sync/` (see below); the Apple link is not tried against a real Apple ID yet |
-| E4 Sync engine | done: `SyncEngine`, `SyncPlan`, `BackgroundImageUploader` (see below); nothing calls it after a save yet (H1) |
-| E3 Supabase repositories | done: `SupabaseGalleryRepository`, `SupabaseStatsRepository` (see below) |
-| E2 LocalGalleryStore | done: `Gallery/Shell/LocalGalleryStore.swift` (see below) |
-| B1 Hand input, B2 Distance and swipe, B3 Touch and Pencil | done: `Input/` (see below); the camera and Vision parts are not tried on a device yet |
+| D3 Theme and visual tokens | done: `DesignSystem/Theme.swift` (see below) |
+| D4 AppRouter, Route, Home | done: `App/Core/Route.swift`, `App/Shell/AppRouter.swift`, `Features/Home/Views/HomeView.swift` |
+| E0 Consent | done: `Features/Consent/` (see below); text and policy URL are placeholders; parental gate dropped for now |
+| E1 Auth | done in code: `Features/Account/`, contracts in `Data/Core/AuthState.swift`, `SupabaseAuthService` in `Data/Shell/` (see below); the Apple link is not tried against a real Apple ID yet |
+| E4 Sync engine | done: `SyncEngine`, `SyncPlan`, `BackgroundImageUploader` in `Data/` (see below); nothing calls it after a save yet (H1) |
+| E3 Supabase repositories | done: `SupabaseGalleryRepository`, `SupabaseStatsRepository` in `Data/Shell/` (see below) |
+| E2 LocalGalleryStore | done: `Data/Shell/LocalGalleryStore.swift` (see below) |
+| B1 Hand input, B2 Distance and swipe, B3 Touch and Pencil | done: `Engines/Input/` (see below); the camera and Vision parts are not tried on a device yet |
+| Folder layout | done on 2026-11-07: `App`, `DesignSystem`, `Engines`, `Features`, `Data`, `Resources` (rules in `CLAUDE.md`, "Code layout"). The chunk sections below were written before the move and keep the old paths (`Gallery/`, `Stats/`, `Sync/`, `Consent/`, `Input/`) |
 | Everything else | not started |
 
 ## Chunk 0.2 result
@@ -202,6 +203,8 @@ The reference repo is `../PuffyPond2` (path: `/Users/filbertnaldowijaya/Document
 | H1 Canvas page | `Canvas/Shell/Playground.swift`, `Stats/Core/SessionRecorder.swift` |
 | I1 Timelapse | `Timelapse/*` and `docs/superpowers/specs/2026-11-03-timelapse-replay-design.md` |
 | I2 NCA | `NCA/nca.bin`, `tools/nca/*` |
+
+Where each piece lands in Rona: canvas rules and `PaintLayer` in `Engines/Paint/`, critters in `Engines/Characters/`, `SessionRecorder` in `Engines/Motion/`, `GrooveDSP` in `Engines/Audio/`, `Painting` and `SessionStats` already in `Data/Core/`, voice clips and `nca.bin` in `Resources/`, each page in `Features/<Page>/`.
 
 Port with the matching tests from `PuffyPondTests/`. The prototype's own `Gallery` store writes PNG plus JSON sidecar files; Rona replaces it with `LocalGalleryStore` behind `GalleryRepository`.
 

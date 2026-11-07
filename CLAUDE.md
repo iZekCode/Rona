@@ -22,13 +22,29 @@ Code to port from lives in `../PuffyPond2` (read-only reference, do not edit it)
 
 ## Code layout
 
-Group by feature. Each feature splits into:
+Top-level folders under `Rona/`:
+
+- `App/`: entry point, `Route`, `AppRouter`, and `AppServices`, the composition root that builds every concrete type.
+- `DesignSystem/`: visual tokens and shared components. Depends on nothing else in the app.
+- `Engines/`: capabilities used by two or more pages (`Input`, `Motion`, `Paint`, `Characters`, `Audio`).
+- `Features/`: one folder per page (`Home`, `Consent`, `Account`, `GetReady`, `Templates`, `Canvas`, `Review`, `Gallery`, `Report`, `Timelapse`).
+- `Data/`: models and repository protocols shared across the app in `Data/Core/` (`Painting`, `SessionStats`, rows, auth and sync contracts); the local store, Supabase and the sync engine in `Data/Shell/`.
+- `Resources/`: asset catalog, voice clips, model files.
+
+Each engine, page and `Data/` splits into the subfolders it needs:
 
 - `Core/`: pure logic. Imports only Foundation, simd or CoreGraphics. No SceneKit, Metal, Vision, AVFoundation, SwiftUI, no clock, randomness or file I/O. Unit tests live here.
 - `Shell/`: everything that touches the outside world (SceneKit, Metal, camera, audio, files, network) and the `@Observable` stages that drive a page.
 - `Views/`: SwiftUI pages and overlays.
 
-Pages talk only to the local repositories, never to Supabase directly.
+Dependency rules:
+
+- A page uses `Engines/`, `DesignSystem/` and `Data/Core/`. It reaches another page through `AppRouter` and `Route`, and reaches storage through the repository protocols in `Data/Core/`, which `AppServices` wires to the local store.
+- An engine uses other engines and `Data/Core/`.
+- `Data/Shell/` uses `Data/Core/`.
+- A type shared by several areas (a model, a protocol that `Data/Shell/` implements) lives in `Data/Core/`, not in the page that uses it first.
+
+`RonaTests/` mirrors this tree, one folder per engine, page or `Data`.
 
 ## Working rules
 
