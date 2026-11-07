@@ -46,16 +46,20 @@ The UI reads and writes only the local store. A sync engine pushes through an ou
 
 - Painting ids are UUIDs created on the client, so retries are idempotent. Upload the PNG first, then insert the row.
 - Conflicts: last write wins (one account, one child, paintings are close to immutable).
-- Deletes are tombstones (`deleted_at`) so they propagate and relock templates correctly.
+- Deletes are tombstones (`deleted_at`) so they propagate to the other devices. (Amended 7 Nov 2026: this used to say "and relock templates correctly". Templates no longer lock, see decision 8.)
 - Uploads use a background `URLSession`.
 
 ### 7. Daily quest: computed on the client, same for every child
 
 `quest(for date)` picks from the fixed pool by a stable hash of the local date (never Swift's per-launch randomized `Hasher`), and is never the same as the previous day's pick. A `questPoolVersion` guards the pool: entries are only appended, or the version is bumped when the pool changes. No `daily_quest` table, no server involvement. The `QuestSource` protocol allows a server source later.
 
+Amended 7 Nov 2026: the pool is now the whole template catalog (39 templates), not a separate ten-quest list, because the prototype made the quest of the day one of the templates. The rules above are unchanged, and since the pool is bigger and the ids are stored with paintings, appending is the only safe change. The prototype's own picker rolls randomly and stores the result on the device, which breaks "same for every child", so it is rewritten, not ported.
+
 ### 8. Templates: fixed, authored, ported from the existing app
 
-The nine abstract templates and the ten-quest pool already exist in `Templates/Core` and are ported. Template difficulty and reach are authored on purpose to widen range of motion, so they are not generated. A `TemplateSource` seam is kept in Core so a generated source (Image Playground plus Vision contours, in free mode) can be added after v1 without touching the pages.
+The 39 templates in `Templates/Core` are ported: nine abstract shapes, the first ten pictures (the old quest pool) and twenty newer pictures, in four levels. Template difficulty and reach are authored on purpose to widen range of motion, so they are not generated. A `TemplateSource` seam is kept in Core so a generated source (Image Playground plus Vision contours, in free mode) can be added after v1 without touching the pages.
+
+Amended 7 Nov 2026: templates no longer unlock one after another. The prototype's `main` opens every template from the start and sorts them by level, so unlock state is not derived from the gallery any more and deleting a painting relocks nothing. If a progression is wanted again, derive it from the non-deleted paintings as before; it still needs no column.
 
 ## Consequences
 
