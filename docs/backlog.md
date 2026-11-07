@@ -2,6 +2,10 @@
 
 Plan for building Rona with a Supabase backend. This document orders the work into chunks and marks what can run in parallel and what must run in sequence.
 
+## Status on 7 November
+
+Done: Wave 0, lane A, lane B, D3, D4, and the whole of Wave 2 (E0 to E4); details in [handover.md](handover.md). Not started: lane C (C3 was due on 7 Nov and C4 on 8 Nov, so it is the critical path now), D1, D2, D5, Wave 3 and Wave 4. The port source is `PuffyPond2` `main`, which changed the canvas, the characters and the templates after this plan was first written; the chunk tables below already follow it.
+
 ## Scope and decisions
 
 The decisions below are recorded in [ADR 0001](adr/0001-backend-architecture.md). The data model is in [data-model.md](data-model.md).
@@ -57,7 +61,7 @@ Chunks inside a lane are SEQ unless noted. The lanes are PAR with each other.
 | ID | Chunk | Needs |
 |---|---|---|
 | C1 | `PaintLayer` and Metal shaders (dabs, advection, leveling, mixing, drips, drying, normal map) | 0.2 |
-| C2 | Pure rules: `BrushStyle`, `StrokeBook`, `StrokePath`, `CanvasLayout` (fixed per-device fit, no live resize), `PotRub`, `Paint`, `PaintTool` | 0.3 |
+| C2 | Pure rules: `BrushStyle`, `StrokeBook`, `StrokePath`, `CanvasLayout` (fixed per-device fit, no live resize, full-screen canvas), `PotRub` (rubbing a buddy over a sleeping character), `Paint`, `PaintTool`. No `Hint`: it is gone from the prototype | 0.3 |
 | C3 | `EaselScene`, `Studio`, `Toybox`, photo booth | C1, C2 |
 | C4 | Performance gate: frame budget measured on a non-Pro iPad before any feature is stacked on the engine | C3 |
 
@@ -68,9 +72,10 @@ Until Lane B lands, C1 to C3 use a fake point-stream input.
 | ID | Chunk | Needs |
 |---|---|---|
 | D1 | Audio: `GrooveDSP`, sound effects, beat clock | 0.2 |
-| D2 | Templates: port `TemplateCatalog`, `OutlineArt` and the quest pool. Make the quest of the day deterministic: stable hash of the local date, never equal to yesterday's, guarded by `questPoolVersion`, pure, behind `QuestSource` | 0.3 |
+| D2 | Templates: port `TemplateDesign`, `TemplateCatalog` (39 templates in four levels, all open, no unlock chain) and `OutlineArt`. The quest of the day is any template: make it deterministic (stable hash of the local date, never equal to yesterday's, guarded by `questPoolVersion`, pure, behind `QuestSource`). The prototype's `DailyQuestStore` rolls randomly and stores the pick, so this part is a rewrite | 0.3 |
 | D3 | Treehouse garden theme and shared visual tokens | 0.2 |
 | D4 | `AppRouter`, `Route`, Home page | 0.2 |
+| D5 | Trace guide (new in the prototype, needs a scope decision): `TraceGuide` (pure), `GuideArrow`, `GuideVoice`, the 174 voice clips and `tools/voice`. Directions are Bahasa Indonesia. Cut it before anything else if time is short; the dotted outline works without it | D2 |
 
 ## Wave 2: Backend bridge
 
@@ -80,7 +85,7 @@ Until Lane B lands, C1 to C3 use a fake point-stream input.
 | E1 | Auth: anonymous sign-in after consent, session in Keychain and restore on launch, upgrade through `linkIdentity` with Sign in with Apple, create `profiles` row | SEQ | A1, E0 |
 | E2 | `LocalGalleryStore`: file-based implementation of `GalleryRepository` and `StatsRepository` | PAR with E1, E3 | 0.3 |
 | E3 | `SupabaseGalleryRepository` and `SupabaseStatsRepository`: Storage upload plus row insert | PAR with E2 | A2, A3, E1 |
-| E4 | Sync engine: offline queue, retry, last-write-wins, deletion propagation (deleting a painting relocks its template), uploads through a background `URLSession` | SEQ | E2, E3 |
+| E4 | Sync engine: offline queue, retry, last-write-wins, deletion propagation, uploads through a background `URLSession` (templates no longer lock, so a deletion does not relock anything) | SEQ | E2, E3 |
 
 E2 is deliberately early so that Wave 3 never depends on the network.
 
@@ -88,22 +93,22 @@ E2 is deliberately early so that Wave 3 never depends on the network.
 
 | ID | Chunk | Mode | Needs |
 |---|---|---|---|
-| F1 | `Critter` base: body rig, face nodes, springs, moods (`CritterKind`, `Springs`, `Face`, `BuddyMode`, `LimbBundle`) | SEQ | C3 |
-| F2 | Ladybug (and `LimbBrush`) | PAR | F1 |
-| F3 | Butterfly | PAR | F1 |
-| F4 | Mushroom | PAR | F1 |
-| F5 | Snail | PAR | F1 |
+| F1 | `Critter` base: body rig, face nodes, springs, moods, the sleeping state (`CritterKind`, `Springs`, `Face`, `BuddyMode`, `LimbBundle`) | SEQ | C3 |
+| F2 | Ladybug, red (and `LimbBrush`) | PAR | F1 |
+| F3 | Butterfly, blue | PAR | F1 |
+| F4 | Frog, green (new; replaces Mushroom, there is no eraser any more) | PAR | F1 |
+| F5 | Snail, orange (shows its side; it is no longer the blender) | PAR | F1 |
 | G1 | Get ready page (skeleton outline, distance ring, Skip) | PAR | B2, D4 |
-| G2 | Review page: `SheetSolver`, `SheetGestures`, `ReviewStage` | PAR | B1, C1, E2 |
+| G2 | Review page: `SheetSolver`, `SheetGestures`, `PaintMatte`, `ReviewStage` | PAR | B1, C1, E2 |
 | G3 | Gallery: 3D treehouse hall plus 2D grid | PAR | D3, E2 |
-| G4 | Report: calendar, `DayReport`, heatmap, hand dominance | PAR | E2 |
-| H1 | Canvas page: pots and bubbles, `Playground`, `SessionRecorder`, Save flow, eye/HUD | SEQ | B1, B3, C4, D1, D2, F2 to F5, E2 |
+| G4 | Report: calendar, `DayReport`, heatmap (also per hand: add `sideHeatmaps` to `SessionStats`), hand dominance | PAR | E2 |
+| H1 | Canvas page: full-screen canvas, the four sleeping characters along the bottom edge, settings menu (character size, sound, restart canvas, save image, guide, quit), eye button, `Playground`, `SessionRecorder`, Save flow. No pots, bubbles or colour chips | SEQ | B1, B3, C4, D1, D2, F2 to F5, E2 |
 
 ## Wave 4: Final layers
 
 | ID | Chunk | Mode | Needs |
 |---|---|---|---|
-| I1 | Timelapse: `StrokeRecording`, replayers, renderer. Decide first whether recordings are uploaded to Storage | SEQ | H1 |
+| I1 | Timelapse: `StrokeRecording`, replayers, renderer, and the camera timelapse (small JPEG snapshots of the child, local only, in a `.camera` file). Decide first whether recordings are uploaded to Storage (v1: no). The camera timelapse needs a privacy and consent check before it ships | SEQ | H1 |
 | I2 | NCA model: training tools and `nca.bin` packaging | PAR with I1 | 0.2 |
 | I3 | Hardening: RLS audit, account and data deletion, privacy review for children, iPad model by iPadOS version test matrix, observability, TestFlight | SEQ | everything else |
 
@@ -148,16 +153,17 @@ Assumptions: planning starts Wednesday 4 November, which leaves 12 days. The exi
 Drop in this order, keeping the core flow (paint, save, gallery, report, sync) intact:
 
 1. I2 NCA model.
-2. I1 Timelapse.
-3. A6 cleanup job for anonymous users and tombstones. A5 `delete-account` is required and is not cut.
-4. G3 3D gallery hall (ship the 2D grid only).
-5. Review page polish (G2), keeping only grab and release.
+2. I1 Timelapse (including the camera timelapse).
+3. D5 trace guide voice (keep the dotted outline; drop the arrow and the spoken directions).
+4. A6 cleanup job for anonymous users and tombstones. A5 `delete-account` is required and is not cut.
+5. G3 3D gallery hall (ship the 2D grid only).
+6. Review page polish (G2), keeping only grab and release.
 
 ### Checkpoints that need a decision
 
 - **Wed 4 Nov (0.1):** auth model and consent approach must be decided on day one. Every day this slips moves the whole critical path.
 - **Sun 8 Nov (C4):** if the Metal engine misses the frame budget on the target iPad, stop and fix it before building pages on top.
-- **Wed 11 Nov:** if H1 is not startable by Thursday morning, apply the first two cuts.
+- **Wed 11 Nov:** if H1 is not startable by Thursday morning, apply the first three cuts.
 
 ## Risks
 

@@ -23,7 +23,7 @@ erDiagram
     PAINTINGS {
         uuid id PK "created on the client"
         uuid user_id FK "-> profiles.id, on delete cascade"
-        text template_id "null for freeform; TemplateKind raw value or quest id"
+        text template_id "null for freeform; any template id (shape, picture or former quest id)"
         timestamptz painted_at "not null"
         text image_path "not null; object path in bucket paintings: {user_id}/{id}.png"
         text recording_path "null in v1; reserved for timelapse"
@@ -50,14 +50,14 @@ There is no `daily_quest` table: the quest of the day is computed on the client 
 
 **`paintings`**
 - `id` is generated on the client so a retried insert is idempotent.
-- `template_id` carries both template kinds and quest ids, because unlocks and the Report's quest star are derived from it.
-- Unlock state is not stored. It is derived from the non-deleted paintings, as the PuffyPond2 prototype does. Deleting a painting (tombstone) relocks the next template.
+- `template_id` carries any template id (an abstract shape, one of the first ten pictures, or a newer picture; ids never change), because the Report's quest star is derived from it.
+- Unlock state does not exist: every template is open from the start (ADR 0001, decision 8, amended 7 Nov 2026). If a progression comes back, derive it from the non-deleted paintings; do not store it.
 - Index: `(user_id, painted_at desc) where deleted_at is null`.
 - A trigger sets `updated_at = now()` on update.
 
 **`painting_stats`**
 - Optional: a painting made by touch has no movement data and no row.
-- `stats` is a JSON document with the existing `SessionStats` content (painting time, heatmap, grip cycles, ROM values, lean flag, hand dominance). `schema_version` lets the format evolve without migrations.
+- `stats` is a JSON document with the existing `SessionStats` content (painting time, heatmap, grip cycles, ROM values, lean flag, hand dominance). The prototype added `sideHeatmaps` (the heatmap per hand); it is optional when decoding, so it can be added to Rona's type without a migration. `schema_version` lets the format evolve without migrations.
 - Follows its painting: a tombstoned painting's stats are ignored by the client, and the row cascades if the painting row is ever purged.
 
 ## Storage
@@ -115,7 +115,7 @@ Two implementations of the first two protocols: `LocalGalleryStore` (what the UI
 ## Client-side state that is not in the database
 
 - Local consent flag and version (`ConsentStore`).
-- Timelapse recordings, next to each painting's PNG.
+- Timelapse recordings, next to each painting's PNG (the stroke recording and the camera timelapse, which holds small camera snapshots of the child and never leaves the device).
 - Outbox of pending sync operations.
 - Camera and device-only settings.
 

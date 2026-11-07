@@ -18,7 +18,7 @@ Rona is a rebuild of an earlier prototype called PuffyPond2, now with accounts a
 
 - A child can start painting within seconds, with no sign-up wall.
 - Painting feels smooth and alive: paint appears right where the hand moves, with no lag.
-- The game rewards coming back: a new quest every day, new shapes that unlock one after another, and a gallery that fills up.
+- The game rewards coming back: a new quest every day, shapes and pictures from easy to hard that are all open from the start, and a gallery that fills up.
 - Paintings and progress survive a lost or replaced iPad.
 - The app works with no internet at all. The internet is only for backup.
 - The camera picture never leaves the iPad.
@@ -39,7 +39,7 @@ Rona is a rebuild of an earlier prototype called PuffyPond2, now with accounts a
 2. **Home.** Three big choices: start painting, see the gallery, see the report.
 3. **Choose what to paint.** Free painting on a blank canvas, or trace a dotted shape.
 4. **Get ready.** A skeleton outline shows where to stand. The child steps back until the shoulders fit the band, holds still while a ring fills, and the canvas opens by itself. A skip button is always there.
-5. **Paint.** Fist to paint, open hand to move without painting. Pick colors by rubbing a paint pot, and pick tools by rubbing a bubble.
+5. **Paint.** Fist to paint, open hand to move without painting. Four sleeping characters wait along the bottom edge; rub the character that follows your hand over one to wake it and paint with its colour. A settings menu (top left) holds character size, sound, restart canvas, save image, the guide and quit.
 6. **Save image.** The finished painting moves to the review page.
 7. **Review and play.** The paint floats on a stretchy see-through sheet. The child can grab it, pull it, push ripples and splashes, and watch it spring back. A silly tune plays. Playing never changes the saved picture.
 8. **Save to gallery** or **keep drawing** on the same canvas.
@@ -55,22 +55,23 @@ Without a camera, every step also works by touch (and Apple Pencil), so the app 
 - The iPad's front camera follows both hands and the upper body, on the device.
 - A closed fist paints. An open hand only moves the character. A fist that is loosening keeps painting for a moment so strokes do not break.
 - The paint is simulated like real wet oil: flat strokes with bristle grooves and ragged edges, thick blobs that sag a little, and paint that dries over time. Faster strokes look smoother, slow strokes keep the full texture.
-- New paint covers old paint. Colors only mix when the blender is used.
-- The whole canvas is always visible. Paint pots sit in a column on the right and tool bubbles on the left, so nothing covers the painting.
+- New paint covers old paint.
+- The canvas fills the whole screen and the camera picture covers it edge to edge. There are no paint pots, bubbles or colour chips, so nothing covers the painting. A button in the top right corner (the eye) only shows or hides the camera picture.
 
 ### The four paint characters
 
-- **Butterfly:** a round, textured brush in blue, green and purple.
-- **Ladybug:** a thin watercolor wash from its body and six legs, in red, orange and yellow.
-- **Mushroom:** the eraser. It scrubs paint away in little puffs. The dotted guide stays.
-- **Snail:** the blender. It paints nothing and smudges the wet paint underneath.
+- **Ladybug:** red.
+- **Butterfly:** blue.
+- **Frog:** green.
+- **Snail:** orange. It always shows its side.
 
-A color belongs to one character. Dip the butterfly in red and it turns into the ladybug, and the other way round.
+One character, one colour. The four wait in a row along the bottom edge, asleep (still, eyes closed, quiet) until a buddy comes near. Rub the buddy over one to wake it; the buddy becomes that character. There is no eraser and no blender any more.
 
 ### Templates and the daily quest
 
-- **Templates:** nine abstract shapes to trace. They go from simple blobs to big shapes that stretch into every corner of the canvas, so children slowly widen their reach. Children are not told a level. Each shape unlocks after a painting of the one before it is in the gallery.
-- **Daily quest:** one subject each day (rocket, house, tree, flower, ice cream, moon and star, sailboat, rainbow, balloon, cupcake). Every child gets the same quest on the same day, and never the same one two days in a row. A finished quest earns a star on the calendar.
+- **Templates:** 39 pictures to trace, from abstract shapes and simple pictures (heart, cloud, apple) to big ones that stretch into every corner of the canvas, so children slowly widen their reach. They are sorted in four levels, easy first, and all are open from the start. Children are not told a level. The names are in Bahasa Indonesia.
+- **Daily quest:** one template each day, the same for every child on the same day and never the same one two days in a row. A finished quest earns a star on the calendar.
+- **Trace guide (proposed):** while the child traces a dotted outline, an arrow and a spoken direction in Indonesian ("Naik ke atas!") follow the brush along it. It is not in the first version unless the time allows (backlog chunk D5).
 
 ### Review and play
 
@@ -97,11 +98,13 @@ A stretchy sheet that reacts to the hands: a fist grabs a small patch and pulls 
 
 ### Sound and music
 
-All sound is made inside the app, with no recorded audio. A bouncy garden tune plays while painting, a silly kazoo-and-tuba tune plays on the review page, and every character has its own sounds. Music can be turned off.
+The music and sound effects are made inside the app. A bouncy garden tune plays while painting, a silly kazoo-and-tuba tune plays on the review page, and every character has its own sounds. Music can be turned off. The only recorded audio is the spoken trace guide, if it is included (see above).
 
 ### Replay of how a painting was made (planned)
 
 After saving, the painting could first replay itself stroke by stroke in about 15 to 20 seconds, with a note played for every stroke, before the child can play with it. The recording stays on the iPad in this version. This is the first thing to drop if time runs short.
+
+A second replay is planned with it: small camera snapshots of the child painting, played back fast beside the painting's own replay. They stay on the iPad like the rest. Because they show the child, they need a clear line in the consent text, and they are dropped together with the replay if that check is not done in time.
 
 ### Account, backup and sync
 
@@ -133,7 +136,7 @@ After saving, the painting could first replay itself stroke by stroke in about 1
 - SceneKit for the 3D parts: the easel, the characters, the treehouse gallery and the stretchy sheet.
 - Metal for the wet paint, simulated on the graphics chip.
 - Apple's Vision framework for hand and body tracking, and the camera framework for the video feed, all on the device.
-- Sound is synthesized in code with Apple's audio engine.
+- Music and sound effects are synthesized in code with Apple's audio engine; the trace guide, if included, plays short recorded voice clips.
 - Swift Package Manager for dependencies. The Supabase Swift library talks to the backend.
 
 **Backend (Supabase)**
@@ -164,7 +167,7 @@ Pages only ever talk to the on-device store. Only the sync engine talks to the s
 - **The iPad is the main copy.** Every painting is saved on the iPad first, so saving is instant and works offline.
 - **The server is the backup.** A sync engine keeps a to-do list of changes and sends them when there is internet, retrying if it fails. Each painting gets its own unique id on the iPad, so a retry never makes a duplicate.
 - **If two copies disagree, the newest change wins.** One account is one child, so this almost never happens.
-- **Deleting is remembered.** A deleted painting is marked as deleted first, so the deletion reaches the other iPad too, and the template it unlocked locks again.
+- **Deleting is remembered.** A deleted painting is marked as deleted first, so the deletion reaches the other iPad too.
 - **A new iPad** downloads the list of paintings and loads full images when they are opened.
 
 ## Quality bars
@@ -182,8 +185,8 @@ Due date: Sunday, 15 November 2026.
 
 Must have:
 - Consent, guest sign-in and the link to Sign in with Apple.
-- Painting with hands and with touch, with all four characters, pots and bubbles.
-- Templates with unlocking, and the daily quest.
+- Painting with hands and with touch, with all four characters (Ladybug, Butterfly, Frog, Snail).
+- The templates and the daily quest.
 - Review and play page.
 - Gallery (a flat grid is enough if the 3D treehouse does not fit).
 - Report with the calendar and movement numbers.
@@ -192,9 +195,10 @@ Must have:
 
 Drop first, in this order, if time runs short:
 1. The neural-network paint texture model.
-2. The replay of how a painting was made.
-3. The 3D treehouse gallery, keeping the flat grid.
-4. Extra polish on the review page, keeping grab and release.
+2. The replay of how a painting was made, with the camera replay.
+3. The spoken trace guide, keeping the dotted outline.
+4. The 3D treehouse gallery, keeping the flat grid.
+5. Extra polish on the review page, keeping grab and release.
 
 ## Risks
 
@@ -215,8 +219,8 @@ Drop first, in this order, if time runs short:
 
 ## Words used in this document
 
-- **Quest:** the subject of the day, the same for every child.
-- **Template:** a dotted shape to trace.
+- **Quest:** the template of the day, the same for every child.
+- **Template:** a dotted shape or picture to trace.
 - **Review:** the page after saving where the child can play with the paint.
 - **Tombstone:** a "this was deleted" mark kept for a while so deletions can spread to other devices.
 - **Guest sign-in:** an account made silently, with no email or password.
