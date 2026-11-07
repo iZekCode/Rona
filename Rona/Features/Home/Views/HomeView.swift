@@ -51,6 +51,18 @@ struct HomeView: View {
             }
             .accessibilityLabel("Akun")
             .padding(20)
+
+            #if DEBUG
+            Button { router.go(.performanceGate) } label: {
+                Image(systemName: "speedometer")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(Theme.ink.opacity(0.35))
+                    .frame(width: Theme.minTap, height: Theme.minTap)
+            }
+            .accessibilityLabel("Uji performa")
+            .padding(20)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            #endif
         }
         .sheet(isPresented: $showAccount) { LinkAccountView(auth: auth) }
     }

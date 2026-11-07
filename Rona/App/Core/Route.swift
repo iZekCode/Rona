@@ -32,6 +32,7 @@ nonisolated enum Route: Hashable, Sendable {
     case gallery2D
     case viewPainting(id: UUID, origin: ViewOrigin)
     case report
+    case performanceGate
 
     var isCanvas: Bool {
         if case .canvas = self { return true }

@@ -1,0 +1,328 @@
+//
+//  PaintLayer.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 07/11/26.
+//
+
+import SceneKit
+import Metal
+import simd
+
+// What one brush dab sends to the GPU. It must match `PaintStamp` in PaintShaders.metal.
+private struct PaintStamp {
+    var segment: SIMD4<Float>
+    var color: SIMD4<Float>
+    var brush: SIMD4<Float>
+    var motion: SIMD4<Float>
+    var shape: SIMD4<Float>
+    var extra: SIMD4<Float>
+    var nca: SIMD4<Float> = .zero
+}
+
+// The tuning numbers sent to the GPU every step. It must match `PaintParams` in PaintShaders.metal.
+private struct PaintParams {
+    var frame: SIMD4<Float>
+    var size: SIMD4<Float>
+    var tune: SIMD4<Float>
+    var shade: SIMD4<Float>
+    var canvas: SIMD4<Float>
+    var nca: SIMD4<Float>
+    var ncaShade: SIMD4<Float>
+    var ncaPatch: SIMD4<Float>
+    var ncaSpeed: SIMD4<Float>
+}
+
+// Wet oil paint on the canvas, simulated on the GPU: dabs, dragging, mixing, dripping, drying and a lit normal map.
+final class PaintLayer {
+    let node = SCNNode()
+    let gpuMeter = GPUTimeMeter()
+
+    // MARK: Tuning
+
+    private static let dryRate: Float = 0.9
+    private static let leveling: Float = 2
+    private static let damping: Float = 5
+    private static let gravity: Float = 260
+    private static let normalStrength: Float = 20
+    private static let cavity: Float = 3
+    static let emission: CGFloat = 0.6
+    private static let reliefHeight: Float = 0.12
+    private static let bodyHeight: Float = 0.15
+    private static let weaveDepth: Float = 0.012
+    private static let grainHeight: Float = 0.02
+    private static let maxStamps = 256
+
+    // MARK: NCA texture brushes (the numbers must match the training run behind nca.bin)
+
+    private static let ncaWeightFile = "nca"
+    private static let ncaModelCount = 6
+    private static let ncaWeightCount = 5856
+    private static let ncaStride: Float = 1
+    private static let ncaJitter: Float = 0
+    private static let ncaDT: Float = 1
+    private static let ncaFireRate: Float = 0.5
+    private static let ncaHeight: Float = 0.2
+    private static let ncaColor: Float = 1.0
+    private static let ncaLifePerSecond: Float = 0.3
+    private static let ncaPatchSize: Float = 0.4
+    private static let ncaPatchEdge = SIMD2<Float>(0.02, 0.2)
+    private static let ncaPatchBias: Float = 0.05
+    private static let ncaSlowSpeed: Float = 0.4
+    private static let ncaFastSpeed: Float = 2
+
+    private let width: Int
+    private let height: Int
+    private let worldPerTexel: Float
+    private let topLeft: SIMD2<Float>
+    private let weaveThreadPitch: Float
+    private let device: MTLDevice?
+    private let commandQueue: MTLCommandQueue?
+    private let stepPipeline: MTLComputePipelineState?
+    private let shadePipeline: MTLComputePipelineState?
+    private let ncaPipeline: MTLComputePipelineState?
+    private let ncaWeights: MTLBuffer?
+    private let ncaMeans: MTLBuffer?
+    private let ncaLoaded: Bool
+    private var paint: [MTLTexture] = []
+    private var flow: [MTLTexture] = []
+    private var current = 0
+    private var ncaA: [MTLTexture] = []
+    private var ncaB: [MTLTexture] = []
+    private var ncaC: [MTLTexture] = []
+    private var ncaLife: [MTLTexture] = []
+    private var ncaCurrent = 0
+    private var ncaUsed = false
+    private var frameNumber: UInt32 = 0
+    private var albedo: MTLTexture?
+    private var glow: MTLTexture?
+    private var normalMap: MTLTexture?
+    private var roughness: MTLTexture?
+    private var stamps: [PaintStamp] = []
+    private var needsClear = true
+    private var settleTime: Float = 0
+    private let surface: SCNNode
+    private var material: SCNMaterial?
+    var emission: CGFloat = PaintLayer.emission {
+        didSet { material?.emission.intensity = emission }
+    }
+    private(set) var isAvailable = false
+
+    init(center: SIMD2<Float>, size: SIMD2<Float>, z: Float, pixelsAcross: Int = PaintLayer.defaultResolution,
+         weaveThreadPitch: Float = PaintLayer.defaultWeaveThreadPitch) {
+        width = pixelsAcross
+        height = Int((Float(pixelsAcross) * size.y / size.x).rounded())
+        worldPerTexel = size.x / Float(width)
+        self.weaveThreadPitch = weaveThreadPitch
+        topLeft = SIMD2(center.x - size.x * 0.5, center.y + size.y * 0.5)
+
+        let plane = SCNPlane(width: CGFloat(size.x), height: CGFloat(size.y))
+        surface = SCNNode(geometry: plane)
+        surface.simdPosition = SIMD3(center.x, center.y, z)
+        surface.castsShadow = false
+        node.addChildNode(surface)
+
+        let device = MTLCreateSystemDefaultDevice()
+        self.device = device
+        commandQueue = device?.makeCommandQueue()
+        let library = device?.makeDefaultLibrary()
+        stepPipeline = library?.makeFunction(name: "paintStep").flatMap { try? device?.makeComputePipelineState(function: $0) }
+        shadePipeline = library?.makeFunction(name: "paintShade").flatMap { try? device?.makeComputePipelineState(function: $0) }
+        ncaPipeline = library?.makeFunction(name: "ncaStep").flatMap { try? device?.makeComputePipelineState(function: $0) }
+        guard let device, stepPipeline != nil, shadePipeline != nil, ncaPipeline != nil else {
+            ncaWeights = nil
+            ncaMeans = nil
+            ncaLoaded = false
+            surface.isHidden = true
+            return
+        }
+
+        func texture(_ format: MTLPixelFormat) -> MTLTexture? {
+            let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: format, width: width, height: height,
+                                                             mipmapped: false)
+            d.usage = [.shaderRead, .shaderWrite]
+            d.storageMode = .private
+            return device.makeTexture(descriptor: d)
+        }
+        let trained = Self.loadNCAWeights(device)
+        ncaLoaded = trained != nil
+        ncaWeights = trained?.weights ?? device.makeBuffer(length: Self.ncaModelCount * Self.ncaWeightCount * MemoryLayout<Float>.stride)
+        ncaMeans = trained?.means ?? device.makeBuffer(length: Self.ncaModelCount * 4 * MemoryLayout<Float>.stride)
+        paint = (0..<2).compactMap { _ in texture(.rgba16Float) }
+        ncaA = (0..<2).compactMap { _ in texture(.rgba16Float) }
+        ncaB = (0..<2).compactMap { _ in texture(.rgba16Float) }
+        ncaC = (0..<2).compactMap { _ in texture(.rgba16Float) }
+        ncaLife = (0..<2).compactMap { _ in texture(.rgba16Float) }
+        flow = (0..<2).compactMap { _ in texture(.rgba16Float) }
+        albedo = texture(.rgba8Unorm)
+        glow = texture(.rgba8Unorm)
+        normalMap = texture(.rgba8Unorm)
+        roughness = texture(.rgba8Unorm)
+
+        let m = SCNMaterial()
+        m.lightingModel = .physicallyBased
+        m.diffuse.contents = albedo
+        m.emission.contents = glow
+        m.emission.intensity = Self.emission
+        material = m
+        m.normal.contents = normalMap
+        m.roughness.contents = roughness
+        m.metalness.contents = NSNumber(value: 0.0)
+        m.clearCoat.contents = NSNumber(value: 0.3)
+        m.clearCoatRoughness.contents = NSNumber(value: 0.15)
+        m.transparencyMode = .aOne
+        m.blendMode = .alpha
+        m.writesToDepthBuffer = false
+        plane.materials = [m]
+        isAvailable = true
+    }
+
+    private static func loadNCAWeights(_ device: MTLDevice) -> (weights: MTLBuffer, means: MTLBuffer)? {
+        let stride = MemoryLayout<Float>.stride
+        let weightLength = ncaModelCount * ncaWeightCount * stride
+        let meanLength = ncaModelCount * 4 * stride
+        guard let url = Bundle.main.url(forResource: ncaWeightFile, withExtension: "bin"),
+              let data = try? Data(contentsOf: url), data.count == weightLength + meanLength,
+              let weights = data.withUnsafeBytes({ device.makeBuffer(bytes: $0.baseAddress!, length: weightLength) }),
+              let means = data.withUnsafeBytes({ device.makeBuffer(bytes: $0.baseAddress! + weightLength, length: meanLength) })
+        else { return nil }
+        return (weights, means)
+    }
+
+    static let defaultResolution = 1536
+    static let defaultWeaveThreadPitch: Float = 0.2 / 32
+
+    // MARK: Painting
+
+    func stamp(from a: SIMD2<Float>, to b: SIMD2<Float>, radius: Float, color paint: SIMD3<Float>,
+               speed: Float, seed: Float, style: BrushStyle = .brush, drag moved: SIMD2<Float>? = nil,
+               strokeSeed: Float? = nil, ncaModel: Int = 0) {
+        guard stamps.count < Self.maxStamps else { return }
+        let len = simd_length(moved ?? b - a)
+        let moving = smoothStep(0.002, 0.02, len)
+        let amount = style.amount ?? 0.03 + (0.3 - 0.03) * moving
+        let dry = smoothStep(1.6, 4.5, speed) * style.bristles
+        let drag = texelVelocity(moved ?? b - a)
+        stamps.append(PaintStamp(segment: SIMD4(a.x, a.y, b.x, b.y),
+                                 color: SIMD4(paint.x, paint.y, paint.z, 0),
+                                 brush: SIMD4(radius, amount, dry, seed),
+                                 motion: SIMD4(drag.x, drag.y, 0, style.push),
+                                 shape: SIMD4(style.nibAngle, style.nibAspect, style.bristles, style.watery),
+                                 extra: SIMD4(style.knife, style.impasto, style.runs, style.blend),
+                                 nca: SIMD4(ncaLoaded ? style.nca : 0, style.ncaSeed, strokeSeed ?? seed, Float(ncaModel))))
+        if ncaLoaded && style.nca > 0.5 { ncaUsed = true }
+        settleTime = max(settleTime, 5 + style.watery * 3)
+    }
+
+    func erase(at center: SIMD2<Float>, radius: Float, dt: Float) {
+        guard stamps.count < Self.maxStamps else { return }
+        stamps.append(PaintStamp(segment: SIMD4(center.x, center.y, center.x, center.y),
+                                 color: SIMD4(0, 0, 0, 1),
+                                 brush: SIMD4(radius, 0, 0, 0),
+                                 motion: SIMD4(0, 0, min(1, dt * 10), 0),
+                                 shape: SIMD4(0, 1, 0, 0), extra: .zero, nca: .zero))
+        settleTime = max(settleTime, 5)
+    }
+
+    func clear() {
+        needsClear = true
+        ncaUsed = false
+        stamps.removeAll()
+    }
+
+    private var lastDT: Float = 1.0 / 60
+    private func texelVelocity(_ d: SIMD2<Float>) -> SIMD2<Float> {
+        var v = SIMD2(d.x, -d.y) / worldPerTexel / max(lastDT, 1.0 / 240)
+        let speed = simd_length(v)
+        if speed > 900 { v *= 900 / speed }
+        return v
+    }
+
+    // MARK: Per frame
+
+    func update(dt: Float) {
+        lastDT = dt
+        simulate(dt: dt)
+    }
+
+    private func simulate(dt: Float) {
+        guard needsClear || !stamps.isEmpty || settleTime > 0 else { return }
+        settleTime -= dt
+        guard let commandQueue, let stepPipeline, let shadePipeline, paint.count == 2, flow.count == 2,
+              let albedo, let glow, let normalMap, let roughness,
+              let ncaPipeline, let ncaWeights, let ncaMeans, ncaA.count == 2, ncaB.count == 2, ncaC.count == 2, ncaLife.count == 2,
+              let buffer = commandQueue.makeCommandBuffer(),
+              let encoder = buffer.makeComputeCommandEncoder() else { return }
+
+        var params = PaintParams(
+            frame: SIMD4(topLeft.x, topLeft.y, worldPerTexel, dt),
+            size: SIMD4(Float(width), Float(height), Float(stamps.count), needsClear ? 1 : 0),
+            tune: SIMD4(Self.dryRate, Self.leveling, Self.damping, Self.gravity),
+            shade: SIMD4(Self.normalStrength, Self.cavity, Self.reliefHeight, Self.bodyHeight),
+            canvas: SIMD4(weaveThreadPitch / worldPerTexel, Self.weaveDepth, Self.grainHeight, 0),
+            nca: SIMD4(Self.ncaStride, Self.ncaDT, Self.ncaFireRate, Float(frameNumber)),
+            ncaShade: SIMD4(Self.ncaHeight, Self.ncaColor, Self.ncaLifePerSecond, Self.ncaJitter),
+            ncaPatch: SIMD4(Self.ncaPatchSize, Self.ncaPatchEdge.x, Self.ncaPatchEdge.y, Self.ncaPatchBias),
+            ncaSpeed: SIMD4(Self.ncaSlowSpeed, Self.ncaFastSpeed, 0, 0))
+        frameNumber &+= 1
+        let stampData = stamps.isEmpty
+            ? [PaintStamp(segment: .zero, color: .zero, brush: .zero, motion: .zero, shape: .zero, extra: .zero, nca: .zero)]
+            : stamps
+        guard let stampBuffer = stampData.withUnsafeBytes({ device?.makeBuffer(bytes: $0.baseAddress!, length: $0.count) })
+        else { encoder.endEncoding(); return }
+
+        let groupSize = MTLSize(width: 16, height: 16, depth: 1)
+        let groups = MTLSize(width: (width + 15) / 16, height: (height + 15) / 16, depth: 1)
+        let next = 1 - current
+
+        encoder.setComputePipelineState(stepPipeline)
+        encoder.setTexture(paint[current], index: 0)
+        encoder.setTexture(flow[current], index: 1)
+        encoder.setTexture(paint[next], index: 2)
+        encoder.setTexture(flow[next], index: 3)
+        encoder.setBytes(&params, length: MemoryLayout<PaintParams>.stride, index: 0)
+        encoder.setBuffer(stampBuffer, offset: 0, index: 1)
+        encoder.dispatchThreadgroups(groups, threadsPerThreadgroup: groupSize)
+
+        if needsClear || ncaUsed {
+            let ncaNext = 1 - ncaCurrent
+            encoder.setComputePipelineState(ncaPipeline)
+            encoder.setTexture(ncaA[ncaCurrent], index: 0)
+            encoder.setTexture(ncaB[ncaCurrent], index: 1)
+            encoder.setTexture(ncaC[ncaCurrent], index: 2)
+            encoder.setTexture(ncaLife[ncaCurrent], index: 3)
+            encoder.setTexture(flow[current], index: 4)
+            encoder.setTexture(ncaA[ncaNext], index: 5)
+            encoder.setTexture(ncaB[ncaNext], index: 6)
+            encoder.setTexture(ncaC[ncaNext], index: 7)
+            encoder.setTexture(ncaLife[ncaNext], index: 8)
+            encoder.setBytes(&params, length: MemoryLayout<PaintParams>.stride, index: 0)
+            encoder.setBuffer(stampBuffer, offset: 0, index: 1)
+            encoder.setBuffer(ncaWeights, offset: 0, index: 2)
+            encoder.dispatchThreadgroups(groups, threadsPerThreadgroup: groupSize)
+            ncaCurrent = ncaNext
+        }
+
+        encoder.setComputePipelineState(shadePipeline)
+        encoder.setTexture(paint[next], index: 0)
+        encoder.setTexture(flow[next], index: 1)
+        encoder.setTexture(albedo, index: 2)
+        encoder.setTexture(normalMap, index: 3)
+        encoder.setTexture(roughness, index: 4)
+        encoder.setTexture(ncaA[ncaCurrent], index: 5)
+        encoder.setTexture(ncaLife[ncaCurrent], index: 6)
+        encoder.setTexture(glow, index: 7)
+        encoder.setBytes(&params, length: MemoryLayout<PaintParams>.stride, index: 0)
+        encoder.setBuffer(ncaMeans, offset: 0, index: 1)
+        encoder.dispatchThreadgroups(groups, threadsPerThreadgroup: groupSize)
+
+        encoder.endEncoding()
+        buffer.addCompletedHandler { @Sendable [gpuMeter] finished in
+            gpuMeter.record(milliseconds: (finished.gpuEndTime - finished.gpuStartTime) * 1000)
+        }
+        buffer.commit()
+        current = next
+        stamps.removeAll(keepingCapacity: true)
+        needsClear = false
+    }
+}
