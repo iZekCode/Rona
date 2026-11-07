@@ -26,6 +26,10 @@ Rona is an iPad painting app with a Supabase backend; PuffyPond2 is the referenc
 | File names | done on 2026-11-07: one main type per file. `HandPose.swift` became `HandState.swift` plus `PoseFilter.swift` and `PalmReading.swift`; body types moved from `HandFrame.swift` to `BodyFrame.swift`; `HandTracker` is now `PoseTracker`; `OneEuroFilter2D.swift`, `View+PointerInput.swift`, `SyncContracts.swift` (was `SyncPorts.swift`), `AuthService.swift` split from `AuthState.swift`. The chunk sections below keep the old names |
 | Folder layout | done on 2026-11-07: `App`, `DesignSystem`, `Engines`, `Features`, `Data`, `Resources` (rules in `CLAUDE.md`, "Code layout"). The chunk sections below were written before the move and keep the old paths (`Gallery/`, `Stats/`, `Sync/`, `Consent/`, `Input/`) |
 | Reference update | done on 2026-11-07 (docs only, no Swift changed): the port source is now `PuffyPond2` `main`, not `feat/treehouse-garden-theme`. See "PuffyPond2 changes since 4 November" below. `backlog.md`, `spec.md`, ADR decisions 6 to 8 and `data-model.md` follow it |
+| C2 Pure canvas rules | done on 2026-11-07: `Engines/Paint/Core/` (see below) |
+| C1 Paint simulation | done on 2026-11-07: `Engines/Paint/Shell/` (see below); looks and speed not tried on a device |
+| C3 Easel scene | done on 2026-11-07: `Engines/Paint/Shell/` (see below); no page shows it yet, so the live look and frame cost are not tried on a device |
+| C4 Performance gate | tool built on 2026-11-07 (see below); not measured on a device yet, so the gate is still open |
 | Everything else | not started |
 
 ## Chunk 0.2 result
@@ -156,6 +160,55 @@ The sync is push and pull, with real background uploads (ADR decision 6 stands: 
   - Pull only matters across devices once "sign in to an existing account on a new device" exists (`signInWithIdToken`, not built).
   - `imageData` still returns the library's storage error for a missing object instead of `GalleryStoreError.notFound`; a failed download is just retried.
 
+## Chunk C4 result (tool built, measurement still to do)
+
+The only iPad available is an iPad Pro M5, much faster than the iPads children use, so a pass there is not a pass for the app. C4 therefore measures the **cost** and the **headroom**, not just "does it run":
+
+- **Page:** `Features/PerformanceGate/` (Debug builds only show its entry: the small speedometer button at the top left of Home; `Route.performanceGate`). It paints with made-up brushes (`FakePainter`) on the real `EaselScene` and `PaintLayer`, with the four characters' colours and NCA textures, and shows: paint GPU time (average and p95, from `MTLCommandBuffer` start and end times, in `GPUTimeMeter`), frame time (average, p95, worst), main-thread time, fps, a verdict and a headroom number. Controls: paint resolution (1024, 1536, 2048, 3072), brushes (1, 2, 4), NCA texture on or off, fps cap (60 or 120). "Salin hasil" copies a one-paragraph summary with the device model.
+- **Pure Core (tested):** `FrameStats` (rolling window, average, percentile, worst, share over a limit), `FrameBudget` (the limits and the verdict), `FakePainter` (brush paths that stay on the canvas). `FrameDriver` (display link) and `GPUTimeMeter` are in `Engines/Paint/Shell/`; `PaintLayer.gpuMeter` is new.
+- **Budget (my proposal, not decided):** 60 fps is 16.6 ms. Paint GPU average up to 6 ms is good, up to 10 ms is tight, above is over; frame p95 above 18 ms is tight and above 25 ms is over. The rest of the frame is for SceneKit and for Vision (camera, hand and body pose), which this page does not run yet.
+- **Headroom** is `10 ms / measured paint GPU average`: how many times slower the GPU could be and still fit the paint step. It is the number that matters on the M5. Raising the resolution and brushes, and the 120 fps cap (frame average staying near 8.3 ms), show how far the whole pipeline is from its limit.
+- **To do on the iPad Pro M5:** run a Debug build on the device, open the page, try each resolution with 4 brushes at the 60 and the 120 fps cap, and send the "Salin hasil" text of each. Then decide how big a gap to the weakest supported iPad is safe, set a quality tier per device (resolution through `PaintLayer(pixelsAcross:)`), and record the minimum iPad in the ADR. Run it again with `PoseTracker` on once H1 starts the camera.
+- Simulator numbers (paint GPU about 0.2 ms) only prove the page works.
+- **First run on the iPad Pro M5 (7 Nov 2026, by eye, no numbers copied yet):** 1024 and 1536 px with 4 brushes were smooth even at the 120 fps cap. 2048 px with 4 brushes was smooth at 60 fps, 2 brushes smooth at 120, 4 brushes stuttered at 120. 3072 px with 1 brush was smooth at 60 fps, anything above that stuttered. Reading: the whole frame at 1536 px with 4 brushes costs under 8.3 ms on the M5, so the planned load (1536 px, at most 2 hands, 60 fps) has at least 2x headroom there. How that maps to a weaker iPad is still unknown. To quantify, copy the "Salin hasil" text for 1536 / 4 brushes / 120 fps and 2048 / 4 brushes / 60 fps.
+- Tests: `FrameStatsTests`, `FrameBudgetTests`, `FakePainterTests` (235 in all on the iPad mini simulator).
+
+## Chunk C3 result
+
+Ported from `PuffyPond2/Canvas/Shell/` (`main`), iPad only (all `#if os(macOS)` branches and the `PlatformColor`, `PlatformImage`, `PlatformFont` aliases are gone: the code uses `UIColor`, `UIImage`, `UIFont`).
+
+- `Engines/Paint/Shell/`: `EaselScene`, `Effects`, `CanvasPhotoBooth`, `MeshBuilder`, `Studio`, `Toybox`, and `Paint+Color.swift` (the `Paint.swiftUI(_:)` and `Paint.platform(_:)` helpers, split from `Toybox.swift`).
+- `Engines/Paint/Core/`: `PaintMatte` (from `Review/Core`, the photo booth needs it; G2 uses it from here) and `CanvasPhotos` (was inside the prototype's `AppRouter.swift`).
+- **`Studio` and `Toybox` decision:** both are still used by the full-screen canvas, so both came, but `Studio.backdrop()` (the treehouse room image) did not: nothing on the canvas uses it any more (the gallery and review have their own). `Studio` keeps the linen, the weave and `environment()` (also used by the gallery hall and the timelapse replay). `Toybox` stays in `Engines/Paint/Shell/`; the characters (F1 to F5) use its balloon material, eyes and lips from there.
+- **`EaselScene` no longer owns the characters.** The prototype built four `CharacterPerch` nodes in it, plus `placePerches()` and `isOverShelf(_:)`. Those belong to F1 and H1 (the page): `layout.characterSlots(count:)` gives the positions, `CanvasLayout.touches(_:characterAt:)` the hit test. `EaselScene` keeps the camera, lights, linen board, `fit(size:)`, `shakeCamera` and `photoBooth(paint:)`.
+- `CanvasPhotoBooth.photos(pixels:)` now takes the image with `.cgImage` (the prototype used a `cgImageValue` extension that lived in `Gallery.swift`).
+- **Checked by eye:** a throwaway test painted four strokes (one per character, NCA textures on) and rendered `photos.whole`: linen, soft light, the four colours and the paint texture all show. That test was deleted.
+- Tests (`RonaTests/Engines/Paint/`, 222 in all on the iPad mini simulator): `PaintMatteTests` (ported), new `EaselSceneTests`, `CanvasPhotoBoothTests` (renders three photos), `EffectsTests`, `ToyboxTests`, `StudioTests`. The prototype's `CanvasSceneTests` tested `Playground` (H1), and `GardenSceneTests` / `GardenCastTests` / `GardenPaletteTests` test the old treehouse backdrop and cast (F1).
+- **Not done:** the scene is not on screen yet (it needs `SceneView` or the `Playground` of H1), so there is no live frame-rate number. C4 needs a small debug page for it.
+
+## Chunk C1 result
+
+Ported from `PuffyPond2/Canvas/Shell/` (`main`, unchanged since the treehouse branch).
+
+- `Engines/Paint/Shell/PaintLayer.swift` and `PaintShaders.metal` (the shader is copied as is). The comments on properties were dropped (comment rule); the meaning of each GPU field is still in the `.metal` file.
+- **Decoupled from `Studio`:** the prototype read `Studio.weaveTileSize` and `Studio.threadsPerTile` for the canvas weave. `PaintLayer.init` now takes `weaveThreadPitch` (default `0.2 / 32` world units per thread, the same value). C3 passes the real one if it changes the linen. The macOS resolution branch is gone: `defaultResolution` is 1536.
+- **`smoothStep`** was a global in the prototype's `Springs.swift` (F1). It lives in `Engines/Paint/Core/SmoothStep.swift` now; F1 must not define it again.
+- **`Resources/nca.bin`** (140 640 bytes) is copied from `PuffyPond2/PuffyPond/NCA/`, so the ladybug, frog, butterfly and snail grow their texture. Without the file `PaintLayer` paints plain watercolour. The training and packing tools (`tools/nca`) are still I2.
+- Tests (`PaintLayerTests`, `SmoothStepTests`; 201 in all on the iPad mini simulator): Metal and the shaders set up, every tool stamps, the layer settles and clears, and the bundle holds `nca.bin` and `default.metallib`. They do not check how the paint looks; that needs C3 and a screen.
+- **Not done, needs a device:** the look of the paint and the frame cost at 1536 px (C4). The simulator ran the compute passes, but its speed says nothing about a real iPad.
+- The prototype's `PaintLayerReplayer` and its test belong to I1.
+
+## Chunk C2 result
+
+Ported from `PuffyPond2/Canvas/Core/` (`main`). All in `Engines/Paint/Core/`, Foundation and simd only, all `nonisolated`.
+
+- Files: `BrushStyle`, `BrushDab` (was beside `CritterKind` in the prototype), `CanvasLayout`, `CharacterRub`, `FrameTiming`, `Paint`, `PaintTool`, `StrokeBook`, `StrokePath`, `StrokePoint`.
+- **`PotRub` is now `CharacterRub`**: there are no pots any more, it is the rule for rubbing a buddy over a sleeping character.
+- **`CritterKind` is already in `Engines/Characters/Core/CritterKind.swift`** (the enum only: four cases and `gardenCast`, `signatureColor`). `PaintTool` and `StrokeBook` need it, so it came with C2. F1 adds `BuddyMode`, `Springs`, `Face` and the rest beside it.
+- **Not ported:** `Hint.swift` held only `CameraStatus` (`starting`, `running`, `denied`, `unavailable`). It is used by `Playground` and `InstructionView`, so it comes with G1 or H1. `Studio.swift` and `Toybox.swift` were not touched (C3 decides).
+- Prototype comments on properties were dropped to follow the comment rule in `CLAUDE.md`.
+- Tests (`RonaTests/Engines/Paint/`, 39 new, 195 in all on the iPad mini simulator): ported `CanvasLayoutTests`, `StrokeBookTests`, `StrokePathTests`, `CharacterRubTests` (was `PotRubTests`; its pointer test is already in `PointerTrackerTests`); new `FrameTimingTests`, `PaintToolTests`. `CanvasSceneTests` and the `Garden*` tests in the prototype belong to C3 and F1.
+
 ## Chunk B1, B2 and B3 result
 
 Ported from `PuffyPond2/Input/` (lane B, one branch `feat/input`).
@@ -198,7 +251,7 @@ Ported from `PuffyPond2/Input/` (lane B, one branch `feat/input`).
 
 Done: lane A, lane B, D3, D4, E0, E1, E2, E3, E4 (the whole backend bridge). Next, in this order:
 
-1. **Lane C (paint engine)** is the critical path and is behind the plan (C3 was due on 7 Nov, C4 on 8 Nov). C1 and C2 can run in parallel: C1 is `Engines/Paint/Shell` (unchanged in the prototype), C2 is `Engines/Paint/Core` (smaller now: no pots, bubbles or `Hint`). Then C3, then C4 (the frame-budget gate, on a non-Pro iPad).
+1. **Lane C (paint engine)** is the critical path and is behind the plan (C3 was due on 7 Nov, C4 on 8 Nov). C1, C2 and C3 are done, and the C4 page is built: someone has to run it on the iPad Pro (see "Chunk C4 result") and decide the budget. F1 and the other pages can start meanwhile, since the paint engine is not slow on the M5 in the simulator; the gate only decides quality tiers (the frame-budget gate, on a non-Pro iPad).
 2. **In parallel with lane C**, once the lane has its own session: D2 (templates, catalog and deterministic quest), D1 (audio), D5 (trace guide, if kept), G1 (get ready), G4 (report) and G3 (2D grid first). G2 waits for C1.
 3. Then F1, F2 to F5 (Ladybug, Butterfly, Frog, Snail), then H1 (the backlog says H1 must be startable by Thursday morning, 12 Nov, or the first two cuts apply).
 
@@ -212,9 +265,9 @@ The reference repo is `../PuffyPond2` (path: `/Users/filbertnaldowijaya/Document
 |---|---|
 | B1 Hand input | `Input/Core/HandPose.swift`, `OneEuroFilter.swift`; `Input/Shell/HandTracker.swift`, `HandInput.swift` |
 | B2 Distance and swipe | `Input/Core/DistanceGate.swift`, `SwipeDetector.swift`; `Input/Shell/HandFrameRelay.swift` |
-| C1 Paint simulation | `Canvas/Shell/PaintLayer.swift`, `PaintShaders.metal` |
-| C2 Pure canvas rules | `Canvas/Core/*` (`BrushStyle`, `StrokeBook`, `StrokePoint`, `StrokePath`, `CanvasLayout`, `PotRub` (now the rule for rubbing a buddy over a sleeping character), `FrameTiming`, `Paint`, `PaintTool`). `Hint` is deleted in `main`: do not port it |
-| C3 Easel scene | `Canvas/Shell/EaselScene.swift`, `Effects.swift`, `CanvasPhotoBooth.swift`, `MeshBuilder.swift`; `Studio.swift` and `Toybox.swift` only if the full-screen canvas still uses them |
+| C1 Paint simulation (done) | `Canvas/Shell/PaintLayer.swift`, `PaintShaders.metal` |
+| C2 Pure canvas rules (done) | `Canvas/Core/*` (`BrushStyle`, `StrokeBook`, `StrokePoint`, `StrokePath`, `CanvasLayout`, `PotRub` (now `CharacterRub`), `FrameTiming`, `Paint`, `PaintTool`). `Hint.swift` only holds `CameraStatus`, which comes with G1 or H1 |
+| C3 Easel scene (done) | `Canvas/Shell/EaselScene.swift`, `Effects.swift`, `CanvasPhotoBooth.swift`, `MeshBuilder.swift`; `Studio.swift` and `Toybox.swift` only if the full-screen canvas still uses them |
 | D1 Audio | `Audio/Shell/GrooveDSP.swift` |
 | D2 Templates and quest | `Templates/Core/TemplateDesign.swift`, `TemplateCatalog.swift`, `OutlineArt.swift`, `DailyQuest.swift` (39 templates, no unlock chain; rewrite the quest as a pure, deterministic function, see the ADR) |
 | D5 Trace guide | `Templates/Core/TraceGuide.swift`; `Templates/Shell/GuideArrow.swift`, `GuideVoice.swift`; `Voice/*.mp3`; `tools/voice/*`; tests `Templates/TraceGuideTests.swift` |

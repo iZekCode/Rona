@@ -43,6 +43,8 @@ struct ContentView: View {
         switch router.route {
         case .home:
             HomeView(router: router, auth: auth).transition(.opacity)
+        case .performanceGate:
+            PerformanceGateView(router: router).transition(.opacity)
         default:
             PlaceholderPage(router: router).transition(.opacity)
         }
