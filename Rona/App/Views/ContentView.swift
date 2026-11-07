@@ -1,8 +1,14 @@
+//
+//  ContentView.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 04/11/26.
+//
+
 import SwiftUI
 
 struct ContentView: View {
     let auth: AuthStage
-    // nil in previews, which never sync.
     var sync: SyncEngine?
 
     @State private var router = AppRouter()
@@ -18,9 +24,7 @@ struct ContentView: View {
             }
         }
         .immersive()
-        // Signs in once consent exists, and again when the app comes back if an earlier try failed.
         .task(id: consent.agreement) { await auth.start(agreement: consent.agreement) }
-        // The sync starts once sign-in and the consent on the profile are done, and again when the app comes back.
         .task(id: auth.isReady) {
             guard auth.isReady, let sync else { return }
             await sync.enable()
@@ -40,13 +44,12 @@ struct ContentView: View {
         case .home:
             HomeView(router: router, auth: auth).transition(.opacity)
         default:
-            // Pages are added by their own chunks; until then the route shows a way home.
             PlaceholderPage(router: router).transition(.opacity)
         }
     }
 }
 
-// Stand-in for a page that is not built yet.
+// Fills in for a page we have not built yet.
 private struct PlaceholderPage: View {
     let router: AppRouter
 

@@ -1,11 +1,14 @@
+//
+//  AppServices.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import Foundation
 import Network
 
-// The pieces that live as long as the app: one Supabase client (every client shares the Keychain, so a second
-// one could overwrite the session), the sign-in, the local store, the background uploader and the sync engine.
-//
-// It is built once and also by the system, when it relaunches the app in the background to report a finished
-// upload; `bootstrap` then signs in from the saved session and starts the sync without any page on screen.
+// The parts that live as long as the app does; there is only one Supabase connection so logins never clash.
 @MainActor
 final class AppServices {
     static let shared = AppServices()
@@ -34,7 +37,6 @@ final class AppServices {
         uploader.setOnFinish { id, success in
             Task { await engine.imageUploadFinished(id, success: success) }
         }
-        // A sync starts whenever the network comes back.
         monitor.pathUpdateHandler = { path in
             if path.status == .satisfied { Task { await engine.run() } }
         }
@@ -42,7 +44,7 @@ final class AppServices {
         Task { await bootstrap() }
     }
 
-    // Signs in from the saved session (if the parent has agreed) and starts the sync.
+    // Logs back in (once the parent has agreed) and starts the backup.
     func bootstrap() async {
         await auth.start(agreement: ConsentStore().agreement)
         await startSyncIfReady()

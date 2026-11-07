@@ -14,15 +14,16 @@ Rona is an iPad painting app with a Supabase backend; PuffyPond2 is the referenc
 | A3 Storage bucket | done: `create_paintings_bucket` migration |
 | A4 pgTAP tests | done: `supabase/tests/database/rls.test.sql`, run by the `database` CI job |
 | A5 delete-account function | done: `supabase/functions/delete-account` |
-| A6 Cleanup job | done: `supabase/functions/cleanup`, see `docs/cleanup-job.md`; scheduled on the hosted project on 2026-11-06 (`cleanup-daily`, 03:00 UTC), first scheduled run not checked yet |
-| D3 Theme and visual tokens | done: `App/Views/Theme.swift` (see below) |
-| D4 AppRouter, Route, Home | done: `App/Core/Route.swift`, `App/Shell/AppRouter.swift`, `App/Views/HomeView.swift` |
-| E0 Consent | done: `Consent/` (see below); text and policy URL are placeholders; parental gate dropped for now |
-| E1 Auth | done in code: `Sync/` (see below); the Apple link is not tried against a real Apple ID yet |
-| E4 Sync engine | done: `SyncEngine`, `SyncPlan`, `BackgroundImageUploader` (see below); nothing calls it after a save yet (H1) |
-| E3 Supabase repositories | done: `SupabaseGalleryRepository`, `SupabaseStatsRepository` (see below) |
-| E2 LocalGalleryStore | done: `Gallery/Shell/LocalGalleryStore.swift` (see below) |
-| B1 Hand input, B2 Distance and swipe, B3 Touch and Pencil | done: `Input/` (see below); the camera and Vision parts are not tried on a device yet |
+| A6 Cleanup job | done: `supabase/functions/cleanup` (see below); scheduled on the hosted project on 2026-11-06 (`cleanup-daily`, 03:00 UTC), first scheduled run not checked yet |
+| D3 Theme and visual tokens | done: `DesignSystem/Theme.swift` (see below) |
+| D4 AppRouter, Route, Home | done: `App/Core/Route.swift`, `App/Shell/AppRouter.swift`, `Features/Home/Views/HomeView.swift` |
+| E0 Consent | done: `Features/Consent/` (see below); text and policy URL are placeholders; parental gate dropped for now |
+| E1 Auth | done in code: `Features/Account/`, contracts in `Data/Core/AuthState.swift`, `SupabaseAuthService` in `Data/Shell/` (see below); the Apple link is not tried against a real Apple ID yet |
+| E4 Sync engine | done: `SyncEngine`, `SyncPlan`, `BackgroundImageUploader` in `Data/` (see below); nothing calls it after a save yet (H1) |
+| E3 Supabase repositories | done: `SupabaseGalleryRepository`, `SupabaseStatsRepository` in `Data/Shell/` (see below) |
+| E2 LocalGalleryStore | done: `Data/Shell/LocalGalleryStore.swift` (see below) |
+| B1 Hand input, B2 Distance and swipe, B3 Touch and Pencil | done: `Engines/Input/` (see below); the camera and Vision parts are not tried on a device yet |
+| Folder layout | done on 2026-11-07: `App`, `DesignSystem`, `Engines`, `Features`, `Data`, `Resources` (rules in `CLAUDE.md`, "Code layout"). The chunk sections below were written before the move and keep the old paths (`Gallery/`, `Stats/`, `Sync/`, `Consent/`, `Input/`) |
 | Everything else | not started |
 
 ## Chunk 0.2 result
@@ -82,7 +83,7 @@ All tables have RLS enabled and no policies yet, so the API denies everything un
 
 ## Chunk A6 result
 
-`cleanup` edge function plus the migration `add_abandoned_users_function` and `supabase/functions/_shared/storage.ts` (the file removal that `delete-account` now shares). Rules, thresholds, caveats and the production schedule are in `docs/cleanup-job.md`. Tests: `supabase/tests/database/cleanup.test.sql` (7 pgTAP tests, 25 in total), and an end-to-end run on the local stack with four users: only the old abandoned user and the 100-day-old tombstone were removed (with their files), a 10-day-old tombstone and users with a live painting stayed, bad or user tokens got 401, and a second run did nothing. `delete-account` was run again after the refactor and still passes. Not done: a CI job for the functions, and a user with more than 100 files.
+`cleanup` edge function plus the migration `add_abandoned_users_function` and `supabase/functions/_shared/storage.ts` (the file removal that `delete-account` now shares). It purges tombstones older than 90 days and deletes anonymous users older than 30 days with no painting row; the thresholds are constants at the top of `supabase/functions/cleanup/index.ts`. The longer write-up (`docs/cleanup-job.md`) was removed on 2026-11-07 and is still in git history. Tests: `supabase/tests/database/cleanup.test.sql` (7 pgTAP tests, 25 in total), and an end-to-end run on the local stack with four users: only the old abandoned user and the 100-day-old tombstone were removed (with their files), a 10-day-old tombstone and users with a live painting stayed, bad or user tokens got 401, and a second run did nothing. `delete-account` was run again after the refactor and still passes. Not done: a CI job for the functions, and a user with more than 100 files.
 
 ## Chunk D3 and D4 result
 
@@ -202,6 +203,8 @@ The reference repo is `../PuffyPond2` (path: `/Users/filbertnaldowijaya/Document
 | H1 Canvas page | `Canvas/Shell/Playground.swift`, `Stats/Core/SessionRecorder.swift` |
 | I1 Timelapse | `Timelapse/*` and `docs/superpowers/specs/2026-11-03-timelapse-replay-design.md` |
 | I2 NCA | `NCA/nca.bin`, `tools/nca/*` |
+
+Where each piece lands in Rona: canvas rules and `PaintLayer` in `Engines/Paint/`, critters in `Engines/Characters/`, `SessionRecorder` in `Engines/Motion/`, `GrooveDSP` in `Engines/Audio/`, `Painting` and `SessionStats` already in `Data/Core/`, voice clips and `nca.bin` in `Resources/`, each page in `Features/<Page>/`.
 
 Port with the matching tests from `PuffyPondTests/`. The prototype's own `Gallery` store writes PNG plus JSON sidecar files; Rona replaces it with `LocalGalleryStore` behind `GalleryRepository`.
 

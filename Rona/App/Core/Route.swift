@@ -1,6 +1,13 @@
+//
+//  Route.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 04/11/26.
+//
+
 import Foundation
 
-// Where a painting was opened from, so the viewing page can go back there.
+// Remembers which page opened a painting, so the back button returns there.
 nonisolated enum ViewOrigin: Hashable, Sendable {
     case gallery3D(index: Int)
     case gallery2D
@@ -13,8 +20,7 @@ nonisolated enum ViewOrigin: Hashable, Sendable {
     }
 }
 
-// Every full-screen page of the app. Payloads are ids only; the images and stats of a draft live
-// in the stage that owns it, so a route stays small and comparable.
+// Every full-screen page in the app; each one carries only ids, not pictures.
 nonisolated enum Route: Hashable, Sendable {
     case home
     case modePicker
@@ -27,7 +33,6 @@ nonisolated enum Route: Hashable, Sendable {
     case viewPainting(id: UUID, origin: ViewOrigin)
     case report
 
-    // The easel is live (hands paint) only on the canvas page.
     var isCanvas: Bool {
         if case .canvas = self { return true }
         return false

@@ -1,8 +1,13 @@
+//
+//  AppDelegate.swift
+//  Rona
+//
+//  Created by Filbert Naldo Wijaya on 05/11/26.
+//
+
 import UIKit
 
-// SwiftUI has no hook for the system relaunching the app to finish a background URLSession, so this
-// delegate takes the call and passes the completion handler to the uploader, which calls it once the
-// events are handled.
+// Lets the uploader finish its work when iPadOS wakes the app for an upload that ended.
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String,
                      completionHandler: @escaping @MainActor @Sendable () -> Void) {
