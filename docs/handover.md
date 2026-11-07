@@ -1,20 +1,20 @@
 # Handover
 
-Rona is the rebuild of the PuffyPond2 prototype with a Supabase backend. Due date: Sunday 15 November 2026. Planning was done on Wednesday 4 November 2026.
+Rona is an iPad painting app with a Supabase backend; PuffyPond2 is the reference code it ports from. Due date: Sunday 15 November 2026. Planning was done on Wednesday 4 November 2026.
 
 ## Status
 
 | Chunk | State |
 |---|---|
-| 0.1 Product decisions and ADR | done: `docs/adr/0001-supabase-backend.md` |
+| 0.1 Product decisions and ADR | done: `docs/adr/0001-backend-architecture.md` |
 | 0.2 Project skeleton | done (see below) |
-| 0.3 Contracts (ERD, Swift protocols) | done: `docs/supabase-erd.md` and the Swift types (see below) |
+| 0.3 Contracts (ERD, Swift protocols) | done: `docs/data-model.md` and the Swift types (see below) |
 | A1 Migrations | done: `supabase/migrations/` (see below) |
 | A2 RLS policies | done: `add_rls_policies` migration |
 | A3 Storage bucket | done: `create_paintings_bucket` migration |
 | A4 pgTAP tests | done: `supabase/tests/database/rls.test.sql`, run by the `database` CI job |
 | A5 delete-account function | done: `supabase/functions/delete-account` |
-| A6 Cleanup job | done: `supabase/functions/cleanup`, see `docs/supabase-cleanup.md`; not scheduled yet |
+| A6 Cleanup job | done: `supabase/functions/cleanup`, see `docs/cleanup-job.md`; scheduled on the hosted project on 2026-11-06 (`cleanup-daily`, 03:00 UTC), first scheduled run not checked yet |
 | D3 Theme and visual tokens | done: `App/Views/Theme.swift` (see below) |
 | D4 AppRouter, Route, Home | done: `App/Core/Route.swift`, `App/Shell/AppRouter.swift`, `App/Views/HomeView.swift` |
 | E0 Consent | done: `Consent/` (see below); text and policy URL are placeholders; parental gate dropped for now |
@@ -22,6 +22,7 @@ Rona is the rebuild of the PuffyPond2 prototype with a Supabase backend. Due dat
 | E4 Sync engine | done: `SyncEngine`, `SyncPlan`, `BackgroundImageUploader` (see below); nothing calls it after a save yet (H1) |
 | E3 Supabase repositories | done: `SupabaseGalleryRepository`, `SupabaseStatsRepository` (see below) |
 | E2 LocalGalleryStore | done: `Gallery/Shell/LocalGalleryStore.swift` (see below) |
+| B1 Hand input, B2 Distance and swipe, B3 Touch and Pencil | done: `Input/` (see below); the camera and Vision parts are not tried on a device yet |
 | Everything else | not started |
 
 ## Chunk 0.2 result
@@ -81,7 +82,7 @@ All tables have RLS enabled and no policies yet, so the API denies everything un
 
 ## Chunk A6 result
 
-`cleanup` edge function plus the migration `add_abandoned_users_function` and `supabase/functions/_shared/storage.ts` (the file removal that `delete-account` now shares). Rules, thresholds, caveats and the production schedule are in `docs/supabase-cleanup.md`. Tests: `supabase/tests/database/cleanup.test.sql` (7 pgTAP tests, 25 in total), and an end-to-end run on the local stack with four users: only the old abandoned user and the 100-day-old tombstone were removed (with their files), a 10-day-old tombstone and users with a live painting stayed, bad or user tokens got 401, and a second run did nothing. `delete-account` was run again after the refactor and still passes. Not done: the schedule itself (needs the hosted project), a CI job for the functions, and a user with more than 100 files.
+`cleanup` edge function plus the migration `add_abandoned_users_function` and `supabase/functions/_shared/storage.ts` (the file removal that `delete-account` now shares). Rules, thresholds, caveats and the production schedule are in `docs/cleanup-job.md`. Tests: `supabase/tests/database/cleanup.test.sql` (7 pgTAP tests, 25 in total), and an end-to-end run on the local stack with four users: only the old abandoned user and the 100-day-old tombstone were removed (with their files), a 10-day-old tombstone and users with a live painting stayed, bad or user tokens got 401, and a second run did nothing. `delete-account` was run again after the refactor and still passes. Not done: a CI job for the functions, and a user with more than 100 files.
 
 ## Chunk D3 and D4 result
 
@@ -152,6 +153,18 @@ The sync is push and pull, with real background uploads (ADR decision 6 stands: 
   - Pull only matters across devices once "sign in to an existing account on a new device" exists (`signInWithIdToken`, not built).
   - `imageData` still returns the library's storage error for a missing object instead of `GalleryStoreError.notFound`; a failed download is just retried.
 
+## Chunk B1, B2 and B3 result
+
+Ported from `PuffyPond2/Input/` (lane B, one branch `feat/input`).
+
+- **Core** (all `nonisolated`, Foundation, simd or CoreGraphics only): `HandPose` (`HandPose`, `HandState`, `PalmReading`, `PoseFilter`), `OneEuroFilter2D`, `DistanceGate`, `SwipeDetector`, `HoverDwell` (hover-and-hold buttons for the review page and gallery; not in the backlog, but it sits in the same prototype folder and is tiny), `PointerTracker` (new, B3).
+- **`HandFrame.swift` is a split of the prototype's `HandTracker.swift`.** The value types (`HandJoint`, `HandObservation`, `HandFrame`, `BodyJoint`, `BodyPoint`, `BodyFrame`) and the finger counting (`PalmReading.init(_:aspect:)`, moved from `HandInput.swift`) now live in Core without Vision, so they are unit tested. Only the `visionName` mappings stay in Shell.
+- **Shell:** `HandTracker` (front camera plus Vision hand and body pose), `CameraPreviewLayer`, `HandInput` (matches hands to slots, smooths, predicts; `ingest(_:now:)` takes the time so tests can drive it), `HandFrameRelay`, `PointerInput`. **Views:** `PointerSurface.swift` (`.pointerInput(_:)`).
+- **Dropped from the prototype:** the `cameraTimelapse` recorder in `HandTracker` (the timelapse is I1; it needs a hook that offers each pixel buffer, add it then), `rotationAngle` and the macOS and iPhone branches (iPad only: the rotation coordinator always runs), `Platform.isPad`.
+- **B3 touch and Pencil:** `PointerTracker` turns a touch position (view UV) into the prototype's pointer hand (`HandState.pointer`, always a fist, slot 0). `.pointerInput(_:)` is a `DragGesture(minimumDistance: 0)` overlay, which takes both a finger and the Pencil. The page adds the overlay only over the canvas (it takes every touch in its frame), and merges `PointerInput.hand()` with the camera hands once per frame. `SwipeDetector` already ignores pointer hands. Not built: Pencil-only erasing (the prototype had a `pointerErases` setting on the canvas) and Pencil hover; both belong with H1.
+- **Tests (50 new, 156 in all, iPad mini simulator):** ported `DistanceGateTests`, `HoverDwellTests`, `SwipeDetectorTests`; `PoseFilterTests` (the pose rules from the prototype's `HandControlTests`; its buddy-mode and paint-tool half goes with F1 and C2); new `OneEuroFilterTests`, `HandFrameTests`, `HandInputTests`, `PointerTrackerTests`.
+- **Not done, needs a device:** `HandTracker` (permission flow, 720p at 60 fps, mirroring and rotation on both landscape sides), the finger-count threshold (`1.12`) and the `DistanceGate` band (`0.13` to `0.22`, still an estimate from the field of view). Nothing starts the tracker yet: G1 (get ready) and H1 (canvas) own that, and `NSCameraUsageDescription` is already set.
+
 ## Hosted Supabase project
 
 - Project `Rona`, ref `smbsoovlrylahmrqsryw`, region ap-southeast-1 (Singapore), free plan (a free project is paused after 7 days without activity; think about a paid plan before release). Created 4 Nov 2026 with Data API on, "automatically expose new tables" on (the migrations have no table `grant`s and rely on it) and automatic RLS on.
@@ -161,11 +174,12 @@ The sync is push and pull, with real background uploads (ADR decision 6 stands: 
 - Which server the app uses (`SupabaseConfig`): the simulator uses the local stack, a device and release builds use the hosted project, and the environment variables `SUPABASE_URL` and `SUPABASE_KEY` (Edit Scheme, Run, Arguments) override both. Do not commit the scheme with such a variable in it.
 - Checked on an iPad against the hosted project: anonymous sign-in, the `profiles` row (consent version 1) and the Sign in with Apple link (the user is no longer anonymous, provider `apple`).
 - Functions `delete-account` and `cleanup` are deployed (`supabase functions deploy --use-api --yes`, version 1, `verify_jwt = false` as in `config.toml`; they check the bearer token themselves). Checked on the hosted project with a throwaway anonymous user: no token gives 401, GET gives 405, `cleanup` refuses the publishable key (401); with the user's token the profile, painting, stats and the Storage file were all created (RLS and the bucket policies let the owner write), `delete-account` gave 204 and removed the user, profile, painting, stats and file, and the same token then gave 401.
-- Not done: the daily schedule of `cleanup` (see `docs/supabase-cleanup.md`; needs `pg_cron`, `pg_net` and the service role key in Vault), and CD (GitHub Actions for `db push --remote` and `functions deploy`, Xcode Cloud archive and TestFlight).
+- The daily schedule of `cleanup` was set up on 2026-11-06 (`pg_cron` job `cleanup-daily`, `0 3 * * *` UTC, key in Vault; a manual test call returned 200). Still to check: `cron.job_run_details` and `net._http_response` after the first scheduled run.
+- Not done: CD (GitHub Actions for `db push --remote` and `functions deploy`, Xcode Cloud archive and TestFlight).
 
 ## Next step: other lanes
 
-Done: lane A, D3, D4, E0, E1, E2, E3, E4 (the whole backend bridge). Next: the engine lanes B (input), C (paint engine; C4 is the frame-budget gate) and the rest of D (D1 audio, D2 templates and quest), then the pages (Wave 3) on top of `LocalGalleryStore`. Alongside: D1 audio and D2 templates and quest (lane D), lane B (input) and lane C (paint engine; C4 is the frame-budget gate). Settle the Kids Category and consent wording points below before the TestFlight build.
+Done: lane A, lane B, D3, D4, E0, E1, E2, E3, E4 (the whole backend bridge). Next: lane C (paint engine; C1 and C2 first, C4 is the frame-budget gate) and the rest of D (D1 audio, D2 templates and quest), then the pages (Wave 3) on top of `LocalGalleryStore`. G1 (get ready) is now unblocked by B2, and G3 and G4 only need E2 and D3. Settle the Kids Category and consent wording points below before the TestFlight build.
 
 ## Where to port code from
 

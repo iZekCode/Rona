@@ -1,6 +1,6 @@
 # Supabase data model (ERD)
 
-Contract for chunk 0.3 of [supabase-rebuild-backlog.md](supabase-rebuild-backlog.md). Decisions behind it are in [ADR 0001](adr/0001-supabase-backend.md).
+Contract for chunk 0.3 of [backlog.md](backlog.md). Decisions behind it are in [ADR 0001](adr/0001-backend-architecture.md).
 
 ## Entity relationship
 
